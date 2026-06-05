@@ -1,5 +1,5 @@
 /**
- * MIAR ÁRIA — System Handler
+ * MIAR ÁRIA — System Handler + Auto-desenvolvimento
  * Executa comandos PowerShell e CMD no Windows com timeout e captura de output.
  * Uso pessoal — acesso total ao sistema do usuário.
  */
@@ -59,10 +59,18 @@ function runCmd(command) {
 }
 
 /**
- * Coleta informações do sistema para contexto da IA
+ * Coleta informações do sistema para contexto da IA.
+ * Inclui o caminho dos próprios arquivos do app para auto-desenvolvimento.
  */
 function getSystemInfo() {
   try {
+    // Caminho real dos arquivos-fonte do app (onde a IA pode ler/modificar a si mesma)
+    const appDir = path.dirname(path.dirname(__filename)); // desktop/
+    const electronDir = path.join(appDir, 'electron');
+    const srcDir      = path.join(appDir, 'src');
+
+    // Em produção (app instalado), os arquivos ficam em resources/app/
+    // __filename aponta para o .js correto em ambos os casos
     const info = {
       os: `Windows ${os.release()}`,
       arch: os.arch(),
@@ -76,6 +84,21 @@ function getSystemInfo() {
       cpuModel: os.cpus()[0]?.model || 'desconhecido',
       platform: os.platform(),
       uptime: Math.round(os.uptime() / 3600) + 'h',
+      // Caminhos do próprio app — para auto-desenvolvimento
+      appDir,
+      electronDir,
+      srcDir,
+      selfFiles: {
+        aiHandler:        path.join(electronDir, 'ai-handler.js'),
+        mainHandler:      path.join(electronDir, 'main.js'),
+        memoryHandler:    path.join(electronDir, 'memory-handler.js'),
+        systemHandler:    path.join(electronDir, 'system-handler.js'),
+        storageHandler:   path.join(electronDir, 'storage-handler.js'),
+        fileHandler:      path.join(electronDir, 'file-handler.js'),
+        renderer:         path.join(srcDir, 'renderer.js'),
+        styles:           path.join(srcDir, 'styles.css'),
+        html:             path.join(srcDir, 'index.html'),
+      },
     };
     return info;
   } catch {
