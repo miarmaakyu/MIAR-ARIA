@@ -217,6 +217,11 @@ function renderMessages() {
   scrollToBottom();
 }
 
+function setThinkingText(text) {
+  const el = document.querySelector('.msg-thinking .msg-bubble');
+  if (el) el.textContent = text;
+}
+
 function appendMessageEl(msg) {
   const container = document.getElementById('messages');
   document.getElementById('empty-state')?.remove();
@@ -296,21 +301,74 @@ async function sendMessage() {
       .slice(-20)
       .map(m => ({ role: m.role, content: m.content }));
 
-    const result = await window.miar.sendMessage({
-      messages: apiMessages,
-      conversationId: state.currentConvId,
-      attachments: allAttachments.filter(a => a.content),
-      memories: relevantMemories,
-    });
+    // ── Loop de execução de comandos Windows ──────────────────────────────────
+    // A IA pode responder com [CMD: powershell_command] → app executa → devolve resultado → IA continua
+    let loopMessages = [...apiMessages];
+    let finalResult  = null;
+    let loopCount    = 0;
+    const MAX_CMD_LOOPS = 8; // evita loop infinito
+
+    while (loopCount < MAX_CMD_LOOPS) {
+      loopCount++;
+      const result = await window.miar.sendMessage({
+        messages: loopMessages,
+        conversationId: state.currentConvId,
+        attachments: loopCount === 1 ? allAttachments.filter(a => a.content) : [],
+        memories: loopCount === 1 ? relevantMemories : [],
+      });
+
+      if (!result.ok) { finalResult = result; break; }
+
+      // Detecta marcadores [CMD: ...]
+      const cmdMatches = [...(result.text.matchAll(/\[CMD:\s*([\s\S]+?)\]/g))];
+
+      if (!cmdMatches.length) {
+        // Sem comandos — resposta final
+        finalResult = result;
+        break;
+      }
+
+      // Tem comandos — executar todos e coletar resultados
+      const execResults = [];
+      for (const match of cmdMatches) {
+        const cmd = match[1].trim();
+        setThinkingText(`⚙ Executando: ${cmd.substring(0, 60)}…`);
+        const execRes = await window.miar.runCommand(cmd);
+        execResults.push({
+          command: cmd,
+          ok: execRes.ok,
+          output: execRes.stdout || execRes.stderr || '(sem output)',
+          exitCode: execRes.exitCode,
+        });
+      }
+
+      // Monta mensagem de retorno dos resultados ao contexto da IA
+      const cmdFeedback = execResults.map(r =>
+        `[RESULTADO_CMD: ${r.command}]\n${r.ok ? '✓ Saída:' : '✗ Erro (código ' + r.exitCode + '):'}\n${r.output}`
+      ).join('\n\n---\n\n');
+
+      // Adiciona resposta parcial da IA + resultados ao contexto e continua o loop
+      loopMessages = [
+        ...loopMessages,
+        { role: 'assistant', content: result.text },
+        { role: 'user', content: `[SISTEMA — resultados dos comandos executados no Windows]\n\n${cmdFeedback}\n\nContinue com base nos resultados acima.` },
+      ];
+
+      setThinkingText('⋯ Processando resultados…');
+    }
 
     thinkingEl.remove();
 
+    if (!finalResult) {
+      finalResult = { ok: false, error: 'Limite de loops de comando atingido.' };
+    }
+
     const aiMsg = {
       role: 'assistant',
-      content: result.ok ? result.text : result.error,
-      provider: result.provider || '',
+      content: finalResult.ok ? finalResult.text : finalResult.error,
+      provider: finalResult.provider || '',
       timestamp: new Date().toISOString(),
-      isError: !result.ok,
+      isError: !finalResult.ok,
     };
     state.messages.push(aiMsg);
     appendMessageEl(aiMsg);
@@ -318,8 +376,8 @@ async function sendMessage() {
     await window.miar.saveMessage({ conversationId: state.currentConvId, role: 'assistant', content: aiMsg.content, attachments: [] });
     await loadConversationList();
 
-    if (result.ok) {
-      if (state.ttsEnabled) speak(result.text);
+    if (finalResult.ok) {
+      if (state.ttsEnabled) speak(finalResult.text);
       if (state.memoryEnabled && state.messages.length >= 2) {
         const snippet = state.messages.slice(-4).map(m => `${m.role === 'user' ? 'Usuário' : 'MIAR ÁRIA'}: ${m.content}`).join('\n');
         window.miar.memoryExtract({ snippet }).catch(() => {});

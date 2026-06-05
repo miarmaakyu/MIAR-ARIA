@@ -38,4 +38,8 @@ contextBridge.exposeInMainWorld('miar', {
   getAppStructure: () => ipcRenderer.invoke('maintenance:get-app-structure'),
   createBackup: () => ipcRenderer.invoke('maintenance:create-backup'),
   getLogs: () => ipcRenderer.invoke('maintenance:get-logs'),
+
+  // System — acesso total ao Windows
+  runCommand: (cmd) => ipcRenderer.invoke('system:run-command', cmd),
+  getSystemInfo: () => ipcRenderer.invoke('system:get-info'),
 });

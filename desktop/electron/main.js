@@ -6,6 +6,7 @@ const storageHandler = require('./storage-handler');
 const fileHandler = require('./file-handler');
 const maintenanceHandler = require('./maintenance-handler');
 const memoryHandler = require('./memory-handler');
+const systemHandler = require('./system-handler');
 
 let mainWindow = null;
 
@@ -48,7 +49,16 @@ app.on('window-all-closed', () => {
 // ── AI ───────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {
-  return await aiHandler.sendMessage(messages, conversationId, attachments, memories);
+  const sysInfo = systemHandler.getSystemInfo();
+  return await aiHandler.sendMessage(messages, conversationId, attachments, memories, sysInfo);
+});
+
+// ── SYSTEM / WINDOWS ──────────────────────────────────────────────────────────
+ipcMain.handle('system:run-command', async (e, command) => {
+  return await systemHandler.runCommand(command);
+});
+ipcMain.handle('system:get-info', async () => {
+  return systemHandler.getSystemInfo();
 });
 
 ipcMain.handle('ai:test-key', async (event, { provider, key }) => {
