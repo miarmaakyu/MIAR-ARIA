@@ -1,0 +1,48 @@
+name: Build MIAR ARIA Windows Installer
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List dist folder
+        run: dir dist
+        continue-on-error: true
+
+      - name: Upload MIAR-ARIA-Setup.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIAR-ARIA-Setup-Windows
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.msi
+          if-no-files-found: warn
+          retention-days: 30
