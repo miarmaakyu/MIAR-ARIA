@@ -2,11 +2,16 @@
   "name": "miar-aria",
   "version": "1.0.0",
   "description": "MIAR ARIA - Assistente de IA pessoal com voz, microfone e memoria local",
+  "author": "Robson Calaça",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miarmaakyu/MIAR-ARIA.git"
+  },
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --x64",
-    "dist:dir": "electron-builder --win --x64 --dir"
+    "dist": "electron-builder --win --x64 --publish never",
+    "dist:dir": "electron-builder --win --x64 --dir --publish never"
   },
   "dependencies": {
     "electron-store": "^7.0.3",
@@ -32,6 +37,7 @@
       "package.json"
     ],
     "extraResources": [],
+    "publish": null,
     "win": {
       "target": [
         {
