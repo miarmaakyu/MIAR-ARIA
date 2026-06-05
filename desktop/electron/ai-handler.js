@@ -1,7 +1,14 @@
+/**
+ * MIAR ÁRIA — AI Handler
+ * Suporta múltiplas chaves por provider com rotação automática.
+ * Fallback: Groq → Gemini → OpenRouter
+ * Chaves salvas como array: groq: ["gsk_...", "gsk_..."]
+ */
+
 const storageHandler = require('./storage-handler');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const GROQ_PRIMARY_MODEL = 'llama-3.3-70b-versatile';
@@ -9,15 +16,46 @@ const GROQ_FALLBACK_MODEL = 'llama-3.1-8b-instant';
 const MAX_CONTEXT_TOKENS = 6000;
 const CHUNK_SIZE = 3000;
 
+// Índice atual por provider para rotação
+const keyIndexes = { groq: 0, gemini: 0, openrouter: 0 };
+
 function estimateTokens(text) {
-  return Math.ceil(text.length / 4);
+  return Math.ceil((text || '').length / 4);
 }
 
 function sanitizeError(err) {
   const msg = err?.message || String(err);
-  return msg.replace(/sk-[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]')
-            .replace(/gsk_[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]')
-            .replace(/AIza[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]');
+  return msg
+    .replace(/gsk_[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]')
+    .replace(/AIza[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]')
+    .replace(/sk-or-[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]')
+    .replace(/sk-[a-zA-Z0-9\-_]+/g, '[KEY_REDACTED]');
+}
+
+/** Retorna array de chaves válidas para um provider */
+function getKeys(provider) {
+  const raw = storageHandler.getSettingsRaw();
+  const keys = raw.apiKeys || {};
+  const val = keys[provider];
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  return [val];
+}
+
+/** Retorna próxima chave com rotação round-robin */
+function nextKey(provider) {
+  const keys = getKeys(provider);
+  if (!keys.length) return null;
+  const idx = keyIndexes[provider] % keys.length;
+  keyIndexes[provider] = (idx + 1) % keys.length;
+  return keys[idx];
+}
+
+/** Avança para próxima chave (em caso de 429 ou 401) */
+function rotateKey(provider) {
+  const keys = getKeys(provider);
+  if (keys.length <= 1) return;
+  keyIndexes[provider] = (keyIndexes[provider] + 1) % keys.length;
 }
 
 function limitContext(messages) {
@@ -36,59 +74,60 @@ function limitContext(messages) {
   return limited;
 }
 
+// ── GROQ ─────────────────────────────────────────────────────────────────────
+
 async function callGroq(messages, key) {
   let model = GROQ_PRIMARY_MODEL;
   for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const resp = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
-        signal: AbortSignal.timeout(60000),
-      });
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => resp.statusText);
-        if (resp.status === 404 && attempt === 0) {
-          model = GROQ_FALLBACK_MODEL;
-          continue;
-        }
-        throw new Error(`Groq HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+    const resp = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages, max_tokens: 4096, temperature: 0.7 }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => resp.statusText);
+      if ((resp.status === 429 || resp.status === 401) && attempt === 0) {
+        rotateKey('groq');
       }
-      const data = await resp.json();
-      return { ok: true, text: data.choices?.[0]?.message?.content || '', provider: 'Groq', model };
-    } catch (err) {
-      if (attempt === 0 && model === GROQ_PRIMARY_MODEL) {
+      if (resp.status === 404 && attempt === 0) {
         model = GROQ_FALLBACK_MODEL;
         continue;
       }
-      throw err;
+      throw new Error(`Groq HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+    }
+    const data = await resp.json();
+    return { ok: true, text: data.choices?.[0]?.message?.content || '', provider: 'Groq', model };
+  }
+  throw new Error('Groq: tentativas esgotadas.');
+}
+
+async function callGroqWithRotation(messages) {
+  const keys = getKeys('groq');
+  if (!keys.length) throw new Error('Nenhuma chave Groq configurada.');
+  const errors = [];
+  for (let i = 0; i < keys.length; i++) {
+    const key = nextKey('groq');
+    try {
+      return await callGroq(messages, key);
+    } catch (e) {
+      errors.push(sanitizeError(e));
     }
   }
+  throw new Error(`Groq (${keys.length} chave(s)): ${errors.join(' | ')}`);
 }
+
+// ── GEMINI ───────────────────────────────────────────────────────────────────
 
 async function callGemini(messages, key) {
   const contents = messages
     .filter(m => m.role !== 'system')
-    .map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
-
+    .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
   const systemMsg = messages.find(m => m.role === 'system');
-  const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
-
   const body = { contents };
-  if (systemInstruction) body.systemInstruction = systemInstruction;
+  if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
 
-  const resp = await fetch(`${GEMINI_API_URL}?key=${key}`, {
+  const resp = await fetch(`${GEMINI_BASE_URL}?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -96,12 +135,29 @@ async function callGemini(messages, key) {
   });
   if (!resp.ok) {
     const errText = await resp.text().catch(() => resp.statusText);
+    if (resp.status === 429 || resp.status === 401) rotateKey('gemini');
     throw new Error(`Gemini HTTP ${resp.status}: ${errText.substring(0, 200)}`);
   }
   const data = await resp.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return { ok: true, text, provider: 'Gemini', model: 'gemini-1.5-flash' };
+  return { ok: true, text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini', model: 'gemini-1.5-flash' };
 }
+
+async function callGeminiWithRotation(messages) {
+  const keys = getKeys('gemini');
+  if (!keys.length) throw new Error('Nenhuma chave Gemini configurada.');
+  const errors = [];
+  for (let i = 0; i < keys.length; i++) {
+    const key = nextKey('gemini');
+    try {
+      return await callGemini(messages, key);
+    } catch (e) {
+      errors.push(sanitizeError(e));
+    }
+  }
+  throw new Error(`Gemini (${keys.length} chave(s)): ${errors.join(' | ')}`);
+}
+
+// ── OPENROUTER ───────────────────────────────────────────────────────────────
 
 async function callOpenRouter(messages, key) {
   const resp = await fetch(OPENROUTER_API_URL, {
@@ -121,22 +177,41 @@ async function callOpenRouter(messages, key) {
   });
   if (!resp.ok) {
     const errText = await resp.text().catch(() => resp.statusText);
+    if (resp.status === 429 || resp.status === 401) rotateKey('openrouter');
     throw new Error(`OpenRouter HTTP ${resp.status}: ${errText.substring(0, 200)}`);
   }
   const data = await resp.json();
   return { ok: true, text: data.choices?.[0]?.message?.content || '', provider: 'OpenRouter', model: data.model || '' };
 }
 
-async function sendMessage(messages, conversationId, attachments) {
-  const settings = storageHandler.getSettings();
-  const keys = settings.apiKeys || {};
+async function callOpenRouterWithRotation(messages) {
+  const keys = getKeys('openrouter');
+  if (!keys.length) throw new Error('Nenhuma chave OpenRouter configurada.');
+  const errors = [];
+  for (let i = 0; i < keys.length; i++) {
+    const key = nextKey('openrouter');
+    try {
+      return await callOpenRouter(messages, key);
+    } catch (e) {
+      errors.push(sanitizeError(e));
+    }
+  }
+  throw new Error(`OpenRouter (${keys.length} chave(s)): ${errors.join(' | ')}`);
+}
+
+// ── SEND MESSAGE ─────────────────────────────────────────────────────────────
+
+async function sendMessage(messages, conversationId, attachments, memories) {
+  const memoryBlock = memories && memories.length > 0
+    ? '\n\nMemórias relevantes do usuário:\n' + memories.map(m => `- ${m.content}`).join('\n')
+    : '';
 
   const systemPrompt = {
     role: 'system',
-    content: `Você é a MIAR ÁRIA, uma assistente de IA pessoal em português do Brasil.
+    content: `Você é a MIAR ÁRIA, assistente de IA pessoal em português do Brasil.
 Seja precisa, útil e honesta. Se não souber algo, diga claramente.
 Nunca finja ter capacidades que não tem.
-Data/hora atual: ${new Date().toLocaleString('pt-BR')}.`,
+Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${memoryBlock}`,
   };
 
   let contextMessages = [systemPrompt, ...limitContext(messages)];
@@ -145,82 +220,60 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.`,
     const attachText = attachments
       .map(a => `[Arquivo: ${a.name}]\n${a.content || '(sem texto extraído)'}`)
       .join('\n\n---\n\n');
-    const lastUserIdx = [...contextMessages].reverse().findIndex(m => m.role === 'user');
-    if (lastUserIdx !== -1) {
-      const realIdx = contextMessages.length - 1 - lastUserIdx;
-      contextMessages[realIdx] = {
-        ...contextMessages[realIdx],
-        content: contextMessages[realIdx].content + '\n\n' + attachText,
+    const lastIdx = contextMessages.length - 1;
+    if (contextMessages[lastIdx]?.role === 'user') {
+      contextMessages[lastIdx] = {
+        ...contextMessages[lastIdx],
+        content: contextMessages[lastIdx].content + '\n\n' + attachText,
       };
     }
   }
 
-  const userContent = contextMessages[contextMessages.length - 1]?.content || '';
-  const chunks = chunkText(userContent, CHUNK_SIZE);
-  if (chunks.length > 1) {
-    contextMessages[contextMessages.length - 1] = {
-      ...contextMessages[contextMessages.length - 1],
-      content: `[Mensagem longa dividida em ${chunks.length} partes - Parte 1/${chunks.length}]\n${chunks[0]}`,
-    };
+  const groqKeys = getKeys('groq');
+  const geminiKeys = getKeys('gemini');
+  const openrouterKeys = getKeys('openrouter');
+  const totalKeys = groqKeys.length + geminiKeys.length + openrouterKeys.length;
+
+  if (totalKeys === 0) {
+    return { ok: false, error: 'Nenhuma chave de IA configurada.\n\nAbra ⚙ Configurações e adicione pelo menos uma chave (Groq, Gemini ou OpenRouter).' };
   }
 
   const errors = [];
   const providers = [
-    { name: 'groq', key: keys.groq, fn: callGroq },
-    { name: 'gemini', key: keys.gemini, fn: callGemini },
-    { name: 'openrouter', key: keys.openrouter, fn: callOpenRouter },
+    { name: 'Groq', hasKeys: groqKeys.length > 0, fn: callGroqWithRotation },
+    { name: 'Gemini', hasKeys: geminiKeys.length > 0, fn: callGeminiWithRotation },
+    { name: 'OpenRouter', hasKeys: openrouterKeys.length > 0, fn: callOpenRouterWithRotation },
   ];
 
-  for (const { name, key, fn } of providers) {
-    if (!key) continue;
+  for (const { name, hasKeys, fn } of providers) {
+    if (!hasKeys) continue;
     try {
-      const result = await fn(contextMessages, key);
+      const result = await fn(contextMessages);
       if (result.ok && result.text) {
-        storageHandler.appendLog(`[AI OK] Provider: ${result.provider}, model: ${result.model}`);
+        storageHandler.appendLog(`[AI OK] Provider: ${result.provider} | Model: ${result.model}`);
         return { ok: true, text: result.text, provider: result.provider, model: result.model };
       }
     } catch (err) {
       const sanitized = sanitizeError(err);
-      errors.push(`${name}: ${sanitized}`);
+      errors.push(sanitized);
       storageHandler.appendLog(`[AI ERRO] ${name}: ${sanitized}`);
     }
-  }
-
-  const noKey = providers.filter(p => !p.key).map(p => p.name);
-  if (noKey.length === providers.length) {
-    return { ok: false, error: 'Nenhuma chave de IA configurada. Abra Configurações e adicione pelo menos uma chave (Groq, Gemini ou OpenRouter).' };
   }
 
   return { ok: false, error: `Todos os providers falharam:\n${errors.join('\n')}` };
 }
 
-function chunkText(text, size) {
-  if (!text || estimateTokens(text) <= size) return [text];
-  const chunks = [];
-  const words = text.split(' ');
-  let current = '';
-  for (const word of words) {
-    if (estimateTokens(current + ' ' + word) > size && current.length > 0) {
-      chunks.push(current.trim());
-      current = word;
-    } else {
-      current += (current ? ' ' : '') + word;
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
-}
+// ── TEST KEY ─────────────────────────────────────────────────────────────────
 
 async function testKey(provider, key) {
-  if (!key) return { ok: false, error: 'Chave vazia.' };
-  const testMessages = [
-    { role: 'user', content: 'Responda apenas: OK' }
-  ];
+  if (!key || !key.trim()) return { ok: false, error: 'Chave vazia.' };
+  const k = key.trim();
+  const msg = [{ role: 'user', content: 'Responda apenas: OK' }];
   try {
     let result;
-    if (provider === 'groq') result = await callGroq(testMessages, key);
-    else if (provider === 'gemini') result = await callGemini(testMessages, key);
-    else if (provider === 'openrouter') result = await callOpenRouter(testMessages, key);
+    if (provider === 'groq') result = await callGroq(msg, k);
+    else if (provider === 'gemini') result = await callGemini(msg, k);
+    else if (provider === 'openrouter') result = await callOpenRouter(msg, k);
     else return { ok: false, error: 'Provider desconhecido.' };
     return { ok: true, text: result.text, provider: result.provider, model: result.model };
   } catch (err) {
@@ -228,4 +281,14 @@ async function testKey(provider, key) {
   }
 }
 
-module.exports = { sendMessage, testKey };
+// ── KEY STATUS ───────────────────────────────────────────────────────────────
+
+function getKeyStatus() {
+  return {
+    groq: { count: getKeys('groq').length, current: keyIndexes.groq },
+    gemini: { count: getKeys('gemini').length, current: keyIndexes.gemini },
+    openrouter: { count: getKeys('openrouter').length, current: keyIndexes.openrouter },
+  };
+}
+
+module.exports = { sendMessage, testKey, getKeyStatus };

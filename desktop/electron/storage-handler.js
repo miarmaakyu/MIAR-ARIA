@@ -14,47 +14,68 @@ function init() {
   settingsFile = path.join(userDataPath, 'settings.json');
   metaFile = path.join(userDataPath, 'meta.json');
   logsFile = path.join(userDataPath, 'miar-aria.log');
-
   if (!fs.existsSync(conversationsDir)) fs.mkdirSync(conversationsDir, { recursive: true });
-  if (!fs.existsSync(settingsFile)) fs.writeFileSync(settingsFile, JSON.stringify({ apiKeys: {}, ttsEnabled: true, ttsVoice: '', ttsRate: 1.0, ttsPitch: 1.1 }), 'utf8');
+  if (!fs.existsSync(settingsFile)) {
+    fs.writeFileSync(settingsFile, JSON.stringify({
+      apiKeys: { groq: [], gemini: [], openrouter: [], mem0: '' },
+      ttsEnabled: true, ttsVoice: '', ttsRate: 1.0, ttsPitch: 1.1,
+      memoryEnabled: true,
+    }), 'utf8');
+  }
   if (!fs.existsSync(metaFile)) fs.writeFileSync(metaFile, JSON.stringify({ lastConversationId: null }), 'utf8');
 }
 
 function readJSON(file, fallback = {}) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
 }
+function writeJSON(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
 
-function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
-}
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
 
 function getSettings() {
-  const s = readJSON(settingsFile, { apiKeys: {}, ttsEnabled: true, ttsVoice: '', ttsRate: 1.0, ttsPitch: 1.1 });
-  const masked = { ...s };
-  if (masked.apiKeys) {
-    masked.apiKeysMasked = {};
-    for (const [k, v] of Object.entries(masked.apiKeys)) {
-      masked.apiKeysMasked[k] = v ? '••••••••' + v.slice(-4) : '';
-      masked.apiKeysSet = masked.apiKeysSet || {};
-      masked.apiKeysSet[k] = !!v;
+  const s = readJSON(settingsFile, { apiKeys: {} });
+  const result = {
+    ttsEnabled: s.ttsEnabled ?? true,
+    ttsVoice: s.ttsVoice || '',
+    ttsRate: s.ttsRate || 1.0,
+    ttsPitch: s.ttsPitch || 1.1,
+    memoryEnabled: s.memoryEnabled ?? true,
+    apiKeysSet: {},
+    apiKeysCounts: {},
+  };
+  const raw = s.apiKeys || {};
+  for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
+    const val = raw[provider];
+    if (Array.isArray(val)) {
+      result.apiKeysCounts[provider] = val.filter(Boolean).length;
+      result.apiKeysSet[provider] = val.filter(Boolean).length > 0;
+    } else {
+      result.apiKeysCounts[provider] = val ? 1 : 0;
+      result.apiKeysSet[provider] = !!val;
     }
-    delete masked.apiKeys;
   }
-  return masked;
+  return result;
 }
 
 function saveSettings(incoming) {
-  const current = readJSON(settingsFile, { apiKeys: {} });
+  const current = readJSON(settingsFile, { apiKeys: { groq: [], gemini: [], openrouter: [], mem0: '' } });
   const updated = { ...current };
+
   if (incoming.apiKeys) {
     updated.apiKeys = updated.apiKeys || {};
-    for (const [k, v] of Object.entries(incoming.apiKeys)) {
-      if (v && v !== '••••••••' + (current.apiKeys?.[k] || '').slice(-4)) {
-        updated.apiKeys[k] = v;
+    for (const [provider, val] of Object.entries(incoming.apiKeys)) {
+      if (provider === 'mem0') {
+        if (val && typeof val === 'string' && !val.startsWith('•')) updated.apiKeys.mem0 = val.trim();
+      } else if (Array.isArray(val)) {
+        const existing = Array.isArray(updated.apiKeys[provider]) ? updated.apiKeys[provider] : (updated.apiKeys[provider] ? [updated.apiKeys[provider]] : []);
+        updated.apiKeys[provider] = val.map((v, i) => {
+          if (!v || v.startsWith('•')) return existing[i] || '';
+          return v.trim();
+        }).filter(Boolean);
+      } else if (typeof val === 'string' && val && !val.startsWith('•')) {
+        const existing = Array.isArray(updated.apiKeys[provider]) ? updated.apiKeys[provider] : [];
+        if (!existing.includes(val.trim())) existing.push(val.trim());
+        updated.apiKeys[provider] = existing;
       }
     }
   }
@@ -62,24 +83,24 @@ function saveSettings(incoming) {
   if (incoming.ttsVoice !== undefined) updated.ttsVoice = incoming.ttsVoice;
   if (incoming.ttsRate !== undefined) updated.ttsRate = incoming.ttsRate;
   if (incoming.ttsPitch !== undefined) updated.ttsPitch = incoming.ttsPitch;
+  if (incoming.memoryEnabled !== undefined) updated.memoryEnabled = incoming.memoryEnabled;
+
   writeJSON(settingsFile, updated);
-  appendLog(`[SETTINGS] Configurações salvas.`);
+  appendLog('[SETTINGS] Configurações salvas.');
   return { ok: true };
 }
+
+function getSettingsRaw() { return readJSON(settingsFile, { apiKeys: {} }); }
+
+// ── CONVERSATIONS ─────────────────────────────────────────────────────────────
 
 function getConversations() {
   const files = fs.readdirSync(conversationsDir).filter(f => f.endsWith('.json'));
   const list = [];
   for (const f of files) {
     try {
-      const data = readJSON(path.join(conversationsDir, f));
-      list.push({
-        id: data.id,
-        title: data.title || 'Conversa sem título',
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        messageCount: (data.messages || []).length,
-      });
+      const d = readJSON(path.join(conversationsDir, f));
+      list.push({ id: d.id, title: d.title || 'Conversa', createdAt: d.createdAt, updatedAt: d.updatedAt, messageCount: (d.messages || []).length });
     } catch {}
   }
   return list.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -87,8 +108,7 @@ function getConversations() {
 
 function getConversation(id) {
   const file = path.join(conversationsDir, `${id}.json`);
-  if (!fs.existsSync(file)) return null;
-  return readJSON(file);
+  return fs.existsSync(file) ? readJSON(file) : null;
 }
 
 function createConversation(title) {
@@ -106,18 +126,15 @@ function saveMessage(conversationId, role, content, attachments) {
   if (!conv.id) return { ok: false, error: 'Conversa não encontrada.' };
   const message = {
     id: `msg_${Date.now()}`,
-    role,
-    content,
-    attachments: attachments || [],
+    role, content,
+    attachments: (attachments || []).map(a => ({ name: a.name, type: a.type, size: a.size })),
     timestamp: new Date().toISOString(),
   };
   conv.messages = conv.messages || [];
   conv.messages.push(message);
   conv.updatedAt = message.timestamp;
-  if (!conv.title || conv.title === 'Nova conversa') {
-    if (role === 'user' && content) {
-      conv.title = content.substring(0, 60) + (content.length > 60 ? '…' : '');
-    }
+  if ((!conv.title || conv.title === 'Nova conversa') && role === 'user' && content) {
+    conv.title = content.substring(0, 60) + (content.length > 60 ? '…' : '');
   }
   writeJSON(file, conv);
   return { ok: true, message };
@@ -137,10 +154,7 @@ function deleteConversation(id) {
   const file = path.join(conversationsDir, `${id}.json`);
   if (fs.existsSync(file)) fs.unlinkSync(file);
   const meta = readJSON(metaFile);
-  if (meta.lastConversationId === id) {
-    meta.lastConversationId = null;
-    writeJSON(metaFile, meta);
-  }
+  if (meta.lastConversationId === id) { meta.lastConversationId = null; writeJSON(metaFile, meta); }
   return { ok: true };
 }
 
@@ -150,23 +164,16 @@ function searchConversations(query) {
   const results = [];
   for (const f of files) {
     try {
-      const data = readJSON(path.join(conversationsDir, f));
-      const inTitle = (data.title || '').toLowerCase().includes(q);
-      const inMessages = (data.messages || []).some(m =>
-        (m.content || '').toLowerCase().includes(q)
-      );
-      if (inTitle || inMessages) {
-        results.push({ id: data.id, title: data.title, updatedAt: data.updatedAt });
-      }
+      const d = readJSON(path.join(conversationsDir, f));
+      const inTitle = (d.title || '').toLowerCase().includes(q);
+      const inMessages = (d.messages || []).some(m => (m.content || '').toLowerCase().includes(q));
+      if (inTitle || inMessages) results.push({ id: d.id, title: d.title, updatedAt: d.updatedAt });
     } catch {}
   }
   return results.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
-function getLastConversationId() {
-  return readJSON(metaFile).lastConversationId || null;
-}
-
+function getLastConversationId() { return readJSON(metaFile).lastConversationId || null; }
 function setLastConversationId(id) {
   const meta = readJSON(metaFile, {});
   meta.lastConversationId = id;
@@ -174,25 +181,13 @@ function setLastConversationId(id) {
 }
 
 function appendLog(line) {
-  try {
-    const ts = new Date().toISOString();
-    fs.appendFileSync(logsFile, `${ts} ${line}\n`, 'utf8');
-  } catch {}
-}
-
-function getKeysRaw() {
-  return readJSON(settingsFile, { apiKeys: {} }).apiKeys || {};
-}
-
-function getSettingsRaw() {
-  return readJSON(settingsFile, { apiKeys: {} });
+  try { fs.appendFileSync(logsFile, `${new Date().toISOString()} ${line}\n`, 'utf8'); } catch {}
 }
 
 module.exports = {
-  init, getSettings, saveSettings,
-  getConversations, getConversation,
-  createConversation, saveMessage,
-  updateConversationTitle, deleteConversation,
+  init, getSettings, saveSettings, getSettingsRaw,
+  getConversations, getConversation, createConversation,
+  saveMessage, updateConversationTitle, deleteConversation,
   searchConversations, getLastConversationId, setLastConversationId,
-  appendLog, getKeysRaw, getSettingsRaw,
+  appendLog,
 };

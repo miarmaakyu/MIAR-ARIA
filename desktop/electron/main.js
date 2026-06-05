@@ -1,11 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
-const fs = require('fs');
 
 const aiHandler = require('./ai-handler');
 const storageHandler = require('./storage-handler');
 const fileHandler = require('./file-handler');
 const maintenanceHandler = require('./maintenance-handler');
+const memoryHandler = require('./memory-handler');
 
 let mainWindow = null;
 
@@ -23,27 +23,19 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
-      webSecurity: true,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'src', 'index.html'));
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.on('closed', () => { mainWindow = null; });
   Menu.setApplicationMenu(null);
 }
 
 app.whenReady().then(() => {
   storageHandler.init();
+  memoryHandler.init();
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -53,63 +45,49 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ── AI ──────────────────────────────────────────────────────────────────────
+// ── AI ───────────────────────────────────────────────────────────────────────
 
-ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments }) => {
-  return await aiHandler.sendMessage(messages, conversationId, attachments);
+ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {
+  return await aiHandler.sendMessage(messages, conversationId, attachments, memories);
 });
 
 ipcMain.handle('ai:test-key', async (event, { provider, key }) => {
   return await aiHandler.testKey(provider, key);
 });
 
-// ── STORAGE ─────────────────────────────────────────────────────────────────
-
-ipcMain.handle('storage:get-settings', async () => {
-  return storageHandler.getSettings();
+ipcMain.handle('ai:get-key-status', async () => {
+  return aiHandler.getKeyStatus();
 });
 
-ipcMain.handle('storage:save-settings', async (event, settings) => {
-  return storageHandler.saveSettings(settings);
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+
+ipcMain.handle('storage:get-settings', async () => storageHandler.getSettings());
+ipcMain.handle('storage:save-settings', async (e, s) => storageHandler.saveSettings(s));
+ipcMain.handle('storage:get-conversations', async () => storageHandler.getConversations());
+ipcMain.handle('storage:get-conversation', async (e, id) => storageHandler.getConversation(id));
+ipcMain.handle('storage:create-conversation', async (e, title) => storageHandler.createConversation(title));
+ipcMain.handle('storage:save-message', async (e, p) => storageHandler.saveMessage(p.conversationId, p.role, p.content, p.attachments));
+ipcMain.handle('storage:update-conversation-title', async (e, p) => storageHandler.updateConversationTitle(p.id, p.title));
+ipcMain.handle('storage:delete-conversation', async (e, id) => storageHandler.deleteConversation(id));
+ipcMain.handle('storage:search-conversations', async (e, q) => storageHandler.searchConversations(q));
+ipcMain.handle('storage:get-last-conversation-id', async () => storageHandler.getLastConversationId());
+ipcMain.handle('storage:set-last-conversation-id', async (e, id) => storageHandler.setLastConversationId(id));
+
+// ── MEMORY ───────────────────────────────────────────────────────────────────
+
+ipcMain.handle('memory:add', async (e, p) => memoryHandler.addMemory(p));
+ipcMain.handle('memory:get', async (e, p) => memoryHandler.getMemories(p));
+ipcMain.handle('memory:search', async (e, query) => memoryHandler.searchRelevantMemories(query));
+ipcMain.handle('memory:update', async (e, p) => memoryHandler.updateMemory(p.id, p));
+ipcMain.handle('memory:delete', async (e, id) => memoryHandler.deleteMemory(id));
+ipcMain.handle('memory:clear-all', async () => memoryHandler.clearAll());
+ipcMain.handle('memory:stats', async () => memoryHandler.getStats());
+ipcMain.handle('memory:extract', async (e, { snippet }) => {
+  const keys = storageHandler.getSettingsRaw().apiKeys || {};
+  return await memoryHandler.extractAndSaveMemories(snippet, true, keys);
 });
 
-ipcMain.handle('storage:get-conversations', async () => {
-  return storageHandler.getConversations();
-});
-
-ipcMain.handle('storage:get-conversation', async (event, id) => {
-  return storageHandler.getConversation(id);
-});
-
-ipcMain.handle('storage:create-conversation', async (event, title) => {
-  return storageHandler.createConversation(title);
-});
-
-ipcMain.handle('storage:save-message', async (event, { conversationId, role, content, attachments }) => {
-  return storageHandler.saveMessage(conversationId, role, content, attachments);
-});
-
-ipcMain.handle('storage:update-conversation-title', async (event, { id, title }) => {
-  return storageHandler.updateConversationTitle(id, title);
-});
-
-ipcMain.handle('storage:delete-conversation', async (event, id) => {
-  return storageHandler.deleteConversation(id);
-});
-
-ipcMain.handle('storage:search-conversations', async (event, query) => {
-  return storageHandler.searchConversations(query);
-});
-
-ipcMain.handle('storage:get-last-conversation-id', async () => {
-  return storageHandler.getLastConversationId();
-});
-
-ipcMain.handle('storage:set-last-conversation-id', async (event, id) => {
-  return storageHandler.setLastConversationId(id);
-});
-
-// ── FILES ───────────────────────────────────────────────────────────────────
+// ── FILES ────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('file:select-files', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -122,10 +100,7 @@ ipcMain.handle('file:select-files', async () => {
   });
   if (result.canceled) return { canceled: true, files: [] };
   const files = [];
-  for (const filePath of result.filePaths) {
-    const info = await fileHandler.readFile(filePath);
-    files.push(info);
-  }
+  for (const fp of result.filePaths) files.push(await fileHandler.readFile(fp));
   return { canceled: false, files };
 });
 
@@ -136,24 +111,13 @@ ipcMain.handle('file:select-folder', async () => {
   });
   if (result.canceled) return { canceled: true };
   const folderPath = result.filePaths[0];
-  const listing = await fileHandler.listFolder(folderPath);
-  return { canceled: false, folderPath, listing };
+  return { canceled: false, folderPath, ...await fileHandler.listFolder(folderPath) };
 });
 
-ipcMain.handle('file:read-folder-file', async (event, filePath) => {
-  return await fileHandler.readFile(filePath);
-});
+ipcMain.handle('file:read-folder-file', async (e, fp) => fileHandler.readFile(fp));
 
-// ── MAINTENANCE ─────────────────────────────────────────────────────────────
+// ── MAINTENANCE ──────────────────────────────────────────────────────────────
 
-ipcMain.handle('maintenance:get-app-structure', async () => {
-  return maintenanceHandler.getAppStructure();
-});
-
-ipcMain.handle('maintenance:create-backup', async () => {
-  return maintenanceHandler.createBackup();
-});
-
-ipcMain.handle('maintenance:get-logs', async () => {
-  return maintenanceHandler.getLogs();
-});
+ipcMain.handle('maintenance:get-app-structure', async () => maintenanceHandler.getAppStructure());
+ipcMain.handle('maintenance:create-backup', async () => maintenanceHandler.createBackup());
+ipcMain.handle('maintenance:get-logs', async () => maintenanceHandler.getLogs());
