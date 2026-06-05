@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIAR ÁRIA</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <h1>MIAR ÁRIA</h1>
+      <button id="new-conv-btn">+ Nova conversa</button>
+      <input type="text" id="search-box" placeholder="Buscar conversas…" />
+    </div>
+    <div id="conversations"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div id="main">
+    <header id="topbar">
+      <button id="toggle-sidebar" title="Menu">☰</button>
+      <span id="conv-title" title="Clique para renomear">MIAR ÁRIA</span>
+      <span id="ai-status">Sem chave</span>
+      <button id="maintenance-btn" title="Manutenção">🔧</button>
+      <button id="settings-btn" title="Configurações">⚙</button>
+    </header>
+
+    <div id="messages">
+      <div id="empty-state">
+        <h2>MIAR ÁRIA</h2>
+        <p>Assistente de IA com voz, microfone e memória local.</p>
+        <div class="empty-hint">Configure sua chave de IA em ⚙ Configurações para começar.</div>
+      </div>
+    </div>
+
+    <div id="input-area">
+      <div id="attachments-preview"></div>
+      <div id="input-row">
+        <button class="icon-btn" id="attach-btn" title="Anexar arquivo">📎</button>
+        <button class="icon-btn" id="folder-btn" title="Selecionar pasta">📁</button>
+        <button class="icon-btn" id="mic-btn" title="Microfone">🎤</button>
+        <button class="icon-btn" id="tts-btn" title="Voz ligada/desligada">🔈</button>
+        <span id="mic-status"></span>
+        <textarea id="message-input" placeholder="Digite sua mensagem…" rows="1"></textarea>
+        <button class="icon-btn" id="send-btn" style="border-radius:12px;width:44px;height:44px;" title="Enviar">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <h2>⚙ Configurações</h2>
+
+    <div class="modal-section">
+      <h3>Chaves de IA</h3>
+      <p style="font-size:12px;color:var(--text3)">As chaves são salvas localmente no seu computador. Nunca são enviadas para terceiros além do provider escolhido.</p>
+
+      <div class="key-row" id="key-groq">
+        <div class="key-row-header">
+          <span class="key-label">Groq</span>
+          <span class="key-badge unset" id="groq-badge">Não configurada</span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="groq-key-input" placeholder="gsk_…" autocomplete="off" />
+          <button class="btn btn-secondary btn-small" onclick="testKey('groq')">Testar</button>
+          <button class="btn btn-primary btn-small" onclick="saveKey('groq')">Salvar</button>
+        </div>
+        <div class="key-result hidden" id="groq-result"></div>
+      </div>
+
+      <div class="key-row" id="key-gemini">
+        <div class="key-row-header">
+          <span class="key-label">Gemini</span>
+          <span class="key-badge unset" id="gemini-badge">Não configurada</span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="gemini-key-input" placeholder="AIza…" autocomplete="off" />
+          <button class="btn btn-secondary btn-small" onclick="testKey('gemini')">Testar</button>
+          <button class="btn btn-primary btn-small" onclick="saveKey('gemini')">Salvar</button>
+        </div>
+        <div class="key-result hidden" id="gemini-result"></div>
+      </div>
+
+      <div class="key-row" id="key-openrouter">
+        <div class="key-row-header">
+          <span class="key-label">OpenRouter</span>
+          <span class="key-badge unset" id="openrouter-badge">Não configurada</span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="openrouter-key-input" placeholder="sk-or-…" autocomplete="off" />
+          <button class="btn btn-secondary btn-small" onclick="testKey('openrouter')">Testar</button>
+          <button class="btn btn-primary btn-small" onclick="saveKey('openrouter')">Salvar</button>
+        </div>
+        <div class="key-result hidden" id="openrouter-result"></div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3>Voz (TTS)</h3>
+      <div class="modal-row">
+        <label>Voz</label>
+        <select id="voice-select"><option value="">Carregando…</option></select>
+      </div>
+      <div class="modal-row">
+        <label>Velocidade</label>
+        <input type="range" id="tts-rate" min="0.5" max="2" step="0.1" value="1.0" />
+        <span id="tts-rate-val" style="min-width:30px;font-size:12px;color:var(--text2)">1.0</span>
+      </div>
+      <div class="modal-row">
+        <label>Tom</label>
+        <input type="range" id="tts-pitch" min="0.5" max="2" step="0.1" value="1.1" />
+        <span id="tts-pitch-val" style="min-width:30px;font-size:12px;color:var(--text2)">1.1</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('settings-modal')">Fechar</button>
+      <button class="btn btn-primary" onclick="saveAllSettings()">Salvar configurações</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER MODAL -->
+<div class="modal-overlay hidden" id="folder-modal">
+  <div class="modal">
+    <h2>📁 Pasta autorizada</h2>
+    <p id="folder-path-label" style="font-size:13px;color:var(--accent2)"></p>
+    <p style="font-size:12px;color:var(--text3)">Selecione os arquivos para incluir no contexto desta mensagem:</p>
+    <div class="folder-files" id="folder-files-list"></div>
+    <div class="modal-footer">
+      <span id="folder-selected-count" style="font-size:12px;color:var(--text2);flex:1"></span>
+      <button class="btn btn-secondary" onclick="closeModal('folder-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmFolderFiles()">Adicionar selecionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAINTENANCE MODAL -->
+<div class="modal-overlay hidden" id="maintenance-modal">
+  <div class="modal" style="width:660px">
+    <h2>🔧 Modo Manutenção</h2>
+    <p style="font-size:12px;color:var(--text3)">Diagnóstico seguro. Nenhuma alteração é feita sem sua autorização explícita.</p>
+
+    <div class="modal-section">
+      <h3>Status do app</h3>
+      <div class="maintenance-section">
+        <pre id="maintenance-structure">Carregando…</pre>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3>Logs recentes</h3>
+      <div class="maintenance-section">
+        <pre id="maintenance-logs">Carregando…</pre>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3>Diagnóstico com IA</h3>
+      <p style="font-size:12px;color:var(--text3)">Descreva o problema e a IA analisará a estrutura do app e sugerirá correções para sua revisão.</p>
+      <textarea id="maintenance-prompt" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;resize:vertical;min-height:70px;font-family:inherit" placeholder="Ex: O microfone não está funcionando…"></textarea>
+      <button class="btn btn-primary" onclick="runMaintenanceDiagnosis()">Analisar com IA</button>
+      <div id="maintenance-result" style="margin-top:8px;font-size:13px;white-space:pre-wrap;color:var(--text2)"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="createBackup()">💾 Criar backup</button>
+      <span id="backup-status" style="font-size:12px;color:var(--text2);flex:1"></span>
+      <button class="btn btn-secondary" onclick="closeModal('maintenance-modal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

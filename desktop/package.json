@@ -1,0 +1,61 @@
+{
+  "name": "miar-aria",
+  "version": "1.0.0",
+  "description": "MIAR ARIA - Assistente de IA pessoal com voz, microfone e memoria local",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir"
+  },
+  "dependencies": {
+    "electron-store": "^7.0.3",
+    "mammoth": "^1.7.1",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.miararia.app",
+    "productName": "MIAR ARIA",
+    "copyright": "MIAR ARIA",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MIAR ARIA",
+      "installerLanguages": ["pt_BR", "en_US"],
+      "language": "1046",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
