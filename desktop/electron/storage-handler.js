@@ -32,6 +32,12 @@ function writeJSON(file, data) { fs.writeFileSync(file, JSON.stringify(data, nul
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
 
+/** Mascara uma chave: mostra prefixo + últimos 4 chars */
+function maskKey(key) {
+  if (!key || key.length < 8) return '****';
+  return key.substring(0, 8) + '••••••••' + key.slice(-4);
+}
+
 function getSettings() {
   const s = readJSON(settingsFile, { apiKeys: {} });
   const result = {
@@ -42,19 +48,46 @@ function getSettings() {
     memoryEnabled: s.memoryEnabled ?? true,
     apiKeysSet: {},
     apiKeysCounts: {},
+    apiKeysMasked: {},   // versão mascarada para exibição
   };
   const raw = s.apiKeys || {};
   for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
     const val = raw[provider];
     if (Array.isArray(val)) {
-      result.apiKeysCounts[provider] = val.filter(Boolean).length;
-      result.apiKeysSet[provider] = val.filter(Boolean).length > 0;
+      const valid = val.filter(Boolean);
+      result.apiKeysCounts[provider] = valid.length;
+      result.apiKeysSet[provider]    = valid.length > 0;
+      result.apiKeysMasked[provider] = valid.map(maskKey);
     } else {
       result.apiKeysCounts[provider] = val ? 1 : 0;
-      result.apiKeysSet[provider] = !!val;
+      result.apiKeysSet[provider]    = !!val;
+      result.apiKeysMasked[provider] = val ? [maskKey(val)] : [];
     }
   }
   return result;
+}
+
+/** Remove todas as chaves de um provider */
+function deleteProviderKeys(provider) {
+  const current = readJSON(settingsFile, { apiKeys: {} });
+  current.apiKeys = current.apiKeys || {};
+  if (provider === 'mem0') current.apiKeys.mem0 = '';
+  else current.apiKeys[provider] = [];
+  writeJSON(settingsFile, current);
+  appendLog(`[SETTINGS] Chaves de ${provider} apagadas.`);
+  return { ok: true };
+}
+
+/** Remove uma chave específica pelo índice */
+function deleteProviderKey(provider, index) {
+  const current = readJSON(settingsFile, { apiKeys: {} });
+  current.apiKeys = current.apiKeys || {};
+  const arr = Array.isArray(current.apiKeys[provider]) ? current.apiKeys[provider] : [];
+  arr.splice(index, 1);
+  current.apiKeys[provider] = arr.filter(Boolean);
+  writeJSON(settingsFile, current);
+  appendLog(`[SETTINGS] Chave ${index} de ${provider} apagada.`);
+  return { ok: true };
 }
 
 function saveSettings(incoming) {
@@ -186,6 +219,7 @@ function appendLog(line) {
 
 module.exports = {
   init, getSettings, saveSettings, getSettingsRaw,
+  deleteProviderKeys, deleteProviderKey,
   getConversations, getConversation, createConversation,
   saveMessage, updateConversationTitle, deleteConversation,
   searchConversations, getLastConversationId, setLastConversationId,

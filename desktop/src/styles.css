@@ -284,6 +284,7 @@ html, body {
   position: fixed; inset: 0; background: rgba(0,0,0,0.75);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
+.hidden { display: none !important; }
 .modal-overlay.hidden { display: none; }
 .modal {
   background: var(--bg2); border: 1px solid var(--border);
@@ -400,6 +401,48 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
   border: 1px solid var(--border); border-radius: 8px;
   padding: 8px 14px;
 }
+
+/* ── COPY BUTTON ── */
+.copy-btn {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 13px; padding: 1px 5px;
+  border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+}
+.msg:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { color: var(--accent2); background: var(--bg4); }
+
+/* ── LIMPAR CHAVES ── */
+.btn-clear-keys {
+  margin-left: auto;
+  background: none;
+  border: 1px solid #c0392b55;
+  color: #e57373;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-clear-keys:hover { background: #c0392b33; }
+
+/* ── UPDATE BAR ── */
+#update-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; background: #0a2535;
+  border-bottom: 1px solid var(--accent);
+  font-size: 13px; color: var(--accent2);
+}
+#update-bar span { flex: 1; }
+#update-bar button {
+  background: var(--accent); color: #fff; border: none;
+  border-radius: 6px; padding: 4px 14px; font-size: 12px;
+  font-weight: 600; cursor: pointer;
+}
+#update-bar button:last-child {
+  background: none; color: var(--text3); padding: 4px 8px;
+}
+#update-bar button:first-of-type:hover { background: var(--accent2); }
 
 /* ── Linha de vida (decoração clínica no topo) ── */
 #topbar::after {

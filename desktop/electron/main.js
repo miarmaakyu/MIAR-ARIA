@@ -1,12 +1,16 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
 const path = require('path');
 
-const aiHandler = require('./ai-handler');
-const storageHandler = require('./storage-handler');
-const fileHandler = require('./file-handler');
+const aiHandler          = require('./ai-handler');
+const storageHandler     = require('./storage-handler');
+const fileHandler        = require('./file-handler');
 const maintenanceHandler = require('./maintenance-handler');
-const memoryHandler = require('./memory-handler');
-const systemHandler = require('./system-handler');
+const memoryHandler      = require('./memory-handler');
+const systemHandler      = require('./system-handler');
+
+// ── Flags Chromium — necessário para Web Speech API + microfone ───────────────
+app.commandLine.appendSwitch('enable-speech-dispatcher');
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 let mainWindow = null;
 
@@ -27,6 +31,17 @@ function createWindow() {
     },
   });
 
+  // ── Permissão de microfone para Web Speech API ────────────────────────────
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allow = ['media', 'microphone', 'audioCapture', 'notifications'];
+    callback(allow.includes(permission));
+  });
+
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    const allow = ['media', 'microphone', 'audioCapture'];
+    return allow.includes(permission);
+  });
+
   mainWindow.loadFile(path.join(__dirname, '..', 'src', 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('closed', () => { mainWindow = null; });
@@ -37,6 +52,35 @@ app.whenReady().then(() => {
   storageHandler.init();
   memoryHandler.init();
   createWindow();
+
+  // ── Auto-updater ─────────────────────────────────────────────────────────
+  if (app.isPackaged) {
+    try {
+      const { autoUpdater } = require('electron-updater');
+      autoUpdater.autoDownload = true;
+      autoUpdater.autoInstallOnAppQuit = true;
+
+      autoUpdater.on('update-available', (info) => {
+        mainWindow?.webContents.send('updater:status', { type: 'available', version: info.version });
+      });
+      autoUpdater.on('update-downloaded', (info) => {
+        mainWindow?.webContents.send('updater:status', { type: 'downloaded', version: info.version });
+      });
+      autoUpdater.on('error', (err) => {
+        mainWindow?.webContents.send('updater:status', { type: 'error', message: err.message });
+      });
+
+      // Verifica 30 segundos após abrir, depois a cada 2h
+      setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 30000);
+      setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 2 * 60 * 60 * 1000);
+
+      ipcMain.handle('updater:install-now', () => autoUpdater.quitAndInstall());
+      ipcMain.handle('updater:check-now', () => autoUpdater.checkForUpdatesAndNotify());
+    } catch (e) {
+      // electron-updater não disponível em dev
+    }
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -46,7 +90,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ── AI ───────────────────────────────────────────────────────────────────────
+// ── AI ────────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {
   const sysInfo = systemHandler.getSystemInfo();
@@ -69,7 +113,7 @@ ipcMain.handle('ai:get-key-status', async () => {
   return aiHandler.getKeyStatus();
 });
 
-// ── STORAGE ──────────────────────────────────────────────────────────────────
+// ── STORAGE ───────────────────────────────────────────────────────────────────
 
 ipcMain.handle('storage:get-settings', async () => storageHandler.getSettings());
 ipcMain.handle('storage:save-settings', async (e, s) => storageHandler.saveSettings(s));
@@ -82,8 +126,10 @@ ipcMain.handle('storage:delete-conversation', async (e, id) => storageHandler.de
 ipcMain.handle('storage:search-conversations', async (e, q) => storageHandler.searchConversations(q));
 ipcMain.handle('storage:get-last-conversation-id', async () => storageHandler.getLastConversationId());
 ipcMain.handle('storage:set-last-conversation-id', async (e, id) => storageHandler.setLastConversationId(id));
+ipcMain.handle('storage:delete-provider-keys', async (e, provider) => storageHandler.deleteProviderKeys(provider));
+ipcMain.handle('storage:delete-provider-key', async (e, { provider, index }) => storageHandler.deleteProviderKey(provider, index));
 
-// ── MEMORY ───────────────────────────────────────────────────────────────────
+// ── MEMORY ────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('memory:add', async (e, p) => memoryHandler.addMemory(p));
 ipcMain.handle('memory:get', async (e, p) => memoryHandler.getMemories(p));
@@ -97,10 +143,9 @@ ipcMain.handle('memory:extract', async (e, { snippet }) => {
   return await memoryHandler.extractAndSaveMemories(snippet, true, keys);
 });
 
-// ── FILES ────────────────────────────────────────────────────────────────────
+// ── FILES ─────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('file:select-files', async () => {
-  // Uso pessoal — todos os tipos, sem restrição
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Todos os arquivos', extensions: ['*'] }],
@@ -123,7 +168,7 @@ ipcMain.handle('file:select-folder', async () => {
 
 ipcMain.handle('file:read-folder-file', async (e, fp) => fileHandler.readFile(fp));
 
-// ── MAINTENANCE ──────────────────────────────────────────────────────────────
+// ── MAINTENANCE ───────────────────────────────────────────────────────────────
 
 ipcMain.handle('maintenance:get-app-structure', async () => maintenanceHandler.getAppStructure());
 ipcMain.handle('maintenance:create-backup', async () => maintenanceHandler.createBackup());

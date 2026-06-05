@@ -90,13 +90,23 @@ async function loadSettings() {
 
   for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
     const badge = document.getElementById(`${provider}-badge`);
+    const clearBtn = document.getElementById(`${provider}-clear`);
     const count = s.apiKeysCounts?.[provider] || 0;
     if (badge) {
-      badge.textContent = count > 0 ? `${count} chave${count > 1 ? 's' : ''} configurada${count > 1 ? 's' : ''}` : 'Não configurada';
+      badge.textContent = count > 0 ? `${count} chave${count > 1 ? 's' : ''} salva${count > 1 ? 's' : ''}` : 'Não configurada';
       badge.className = `key-badge ${count > 0 ? 'set' : 'unset'}`;
     }
+    if (clearBtn) clearBtn.classList.toggle('hidden', count === 0);
   }
 }
+
+window.clearProviderKeys = async function (provider) {
+  if (!confirm(`Apagar todas as chaves de ${provider}?`)) return;
+  await window.miar.deleteProviderKeys(provider);
+  await loadSettings();
+  updateAiStatus();
+  showKeyResult(provider, true, 'Chaves apagadas.');
+};
 
 window.saveAllSettings = async function () {
   const voiceSel = document.getElementById('voice-select');
@@ -229,16 +239,23 @@ function appendMessageEl(msg) {
   const div = document.createElement('div');
   div.className = `msg ${msg.role}${msg.isError ? ' msg-error' : ''}${msg.isThinking ? ' msg-thinking' : ''}`;
 
-  const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+  const time = msg.timestamp
+    ? new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : '';
   const attachHtml = (msg.attachments || []).length > 0
     ? `<div class="msg-attachments">${msg.attachments.map(a => `<span class="attach-tag">📎 ${escHtml(a.name || a)}</span>`).join('')}</div>`
     : '';
   const providerHtml = msg.provider ? `<span class="msg-provider">${escHtml(msg.provider)}</span>` : '';
+  const msgId = 'msg-' + Math.random().toString(36).slice(2);
 
   div.innerHTML = `
     ${attachHtml}
-    <div class="msg-bubble">${formatContent(msg.content || '')}</div>
-    <div class="msg-meta"><span class="msg-time">${time}</span>${providerHtml}</div>`;
+    <div class="msg-bubble" id="${msgId}">${formatContent(msg.content || '')}</div>
+    <div class="msg-meta">
+      <span class="msg-time">${time}</span>
+      ${providerHtml}
+      <button class="copy-btn" onclick="copyMsg('${msgId}')" title="Copiar texto">⧉</button>
+    </div>`;
 
   container.appendChild(div);
   return div;
@@ -686,6 +703,35 @@ window.clearAllMemories = async function () {
   await window.miar.memoryClearAll();
   await window.loadMemories();
 };
+
+// ── COPY MESSAGE ──────────────────────────────────────────────────────────────
+window.copyMsg = function (id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.innerText || el.textContent || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.parentElement?.querySelector('.copy-btn');
+    if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = '⧉'; }, 1500); }
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+};
+
+// ── UPDATER NOTIFICATIONS ─────────────────────────────────────────────────────
+if (window.miar?.onUpdaterStatus) {
+  window.miar.onUpdaterStatus((data) => {
+    if (data.type === 'available') {
+      setMicStatus(`⬇ Nova versão ${data.version} — baixando…`);
+    } else if (data.type === 'downloaded') {
+      const bar = document.getElementById('update-bar');
+      if (bar) { bar.style.display = 'flex'; bar.querySelector('span').textContent = `Versão ${data.version} pronta`; }
+    }
+  });
+}
 
 // ── MODAL HELPERS ─────────────────────────────────────────────────────────────
 function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }

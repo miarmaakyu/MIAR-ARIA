@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('miar', {
   searchConversations: (q) => ipcRenderer.invoke('storage:search-conversations', q),
   getLastConversationId: () => ipcRenderer.invoke('storage:get-last-conversation-id'),
   setLastConversationId: (id) => ipcRenderer.invoke('storage:set-last-conversation-id', id),
+  deleteProviderKeys: (provider) => ipcRenderer.invoke('storage:delete-provider-keys', provider),
+  deleteProviderKey: (p) => ipcRenderer.invoke('storage:delete-provider-key', p),
 
   // Memory
   memoryAdd: (p) => ipcRenderer.invoke('memory:add', p),
@@ -42,4 +44,9 @@ contextBridge.exposeInMainWorld('miar', {
   // System — acesso total ao Windows
   runCommand: (cmd) => ipcRenderer.invoke('system:run-command', cmd),
   getSystemInfo: () => ipcRenderer.invoke('system:get-info'),
+
+  // Auto-updater
+  onUpdaterStatus: (cb) => ipcRenderer.on('updater:status', (_e, data) => cb(data)),
+  installUpdate: () => ipcRenderer.invoke('updater:install-now'),
+  checkForUpdate: () => ipcRenderer.invoke('updater:check-now'),
 });

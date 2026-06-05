@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "electron-store": "^7.0.3",
+    "electron-updater": "^6.3.9",
     "mammoth": "^1.7.1",
     "pdf-parse": "^1.1.1"
   },
@@ -37,7 +38,11 @@
       "package.json"
     ],
     "extraResources": [],
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "miarmaakyu",
+      "repo": "MIAR-ARIA"
+    },
     "win": {
       "target": [
         {
