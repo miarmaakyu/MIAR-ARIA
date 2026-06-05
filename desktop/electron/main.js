@@ -16,7 +16,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'MIAR ÁRIA',
-    backgroundColor: '#0f0f13',
+    backgroundColor: '#06101c',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -90,13 +90,10 @@ ipcMain.handle('memory:extract', async (e, { snippet }) => {
 // ── FILES ────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('file:select-files', async () => {
+  // Uso pessoal — todos os tipos, sem restrição
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
-    filters: [
-      { name: 'Documentos', extensions: ['txt', 'pdf', 'docx', 'json', 'md'] },
-      { name: 'Imagens', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
-      { name: 'Todos', extensions: ['*'] },
-    ],
+    filters: [{ name: 'Todos os arquivos', extensions: ['*'] }],
   });
   if (result.canceled) return { canceled: true, files: [] };
   const files = [];

@@ -341,70 +341,119 @@ async function sendMessage() {
   }
 }
 
-// ── MICROPHONE ────────────────────────────────────────────────────────────────
+// ── MICROPHONE SAGAZ — auto-disparo após 1,5 s de silêncio ──────────────────
+const MIC_SILENCE_MS = 1500;  // ms de silêncio para disparar
+let _silenceTimer    = null;
+let _hasSpoken       = false;
+let _countdownTimer  = null;
+
 function setupMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     const btn = document.getElementById('mic-btn');
-    btn.title = 'Reconhecimento de voz indisponível neste sistema. Verifique permissão de microfone ou use digitação.';
+    btn.title = 'Reconhecimento de voz indisponível. Verifique permissão de microfone.';
     btn.style.opacity = '0.4';
     return;
   }
+
   const rec = new SR();
-  rec.lang = 'pt-BR';
-  rec.continuous = false;
-  rec.interimResults = true;
+  rec.lang            = 'pt-BR';
+  rec.continuous      = true;   // mantém ouvindo enquanto o usuário fala
+  rec.interimResults  = true;
+  rec.maxAlternatives = 1;
 
   rec.onstart = () => {
     state.isListening = true;
+    _hasSpoken        = false;
     document.getElementById('mic-btn').classList.add('listening');
-    setMicStatus('🔴 Ouvindo…');
+    setMicStatus('🎙 Ouvindo…', 'listening-active');
   };
+
   rec.onresult = (e) => {
     const input = document.getElementById('message-input');
-    let final = '', interim = '';
+    let finalText = '', interimText = '';
+
     for (const r of e.results) {
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
+      if (r.isFinal) finalText   += r[0].transcript + ' ';
+      else           interimText += r[0].transcript;
     }
-    input.value = final || interim;
-    autoResizeTextarea(input);
-    if (final) setMicStatus('⏳ Processando…');
+
+    const combined = (finalText || interimText).trim();
+    if (combined) {
+      input.value = combined;
+      autoResizeTextarea(input);
+      _hasSpoken = true;
+    }
+
+    // Reinicia o temporizador de silêncio a cada resultado
+    clearTimeout(_silenceTimer);
+    clearTimeout(_countdownTimer);
+
+    if (finalText.trim()) {
+      // Após fala final detectada, aguarda silêncio e dispara
+      setMicStatus(`✔ "${finalText.trim().substring(0, 40)}…" — disparando em ${MIC_SILENCE_MS / 1000}s`, 'listening-active');
+      _silenceTimer = setTimeout(() => {
+        if (state.isListening) {
+          rec.stop();  // onend cuidará do envio
+        }
+      }, MIC_SILENCE_MS);
+    } else {
+      setMicStatus('🎙 Ouvindo…', 'listening-active');
+    }
   };
+
   rec.onend = () => {
+    clearTimeout(_silenceTimer);
+    clearTimeout(_countdownTimer);
     state.isListening = false;
     document.getElementById('mic-btn').classList.remove('listening');
     setMicStatus('');
+
     const v = document.getElementById('message-input').value.trim();
-    if (v) setTimeout(() => sendMessage(), 300);
+    if (v && _hasSpoken) {
+      // Auto-disparo imediato — sem delay extra
+      sendMessage();
+    }
   };
+
   rec.onerror = (e) => {
+    clearTimeout(_silenceTimer);
+    clearTimeout(_countdownTimer);
     state.isListening = false;
     document.getElementById('mic-btn').classList.remove('listening');
     const msgs = {
-      'not-allowed': 'Permissão de microfone negada. Verifique as configurações do sistema.',
-      'no-speech': 'Nenhuma fala detectada.',
-      'network': 'Reconhecimento de voz requer internet.',
+      'not-allowed' : 'Permissão de microfone negada. Vá em Configurações do Windows → Privacidade → Microfone.',
+      'no-speech'   : 'Nenhuma fala detectada. Tente novamente.',
+      'network'     : 'Reconhecimento de voz requer conexão à internet.',
+      'aborted'     : '',
     };
-    setMicStatus(msgs[e.error] || `Erro: ${e.error}`);
-    setTimeout(() => setMicStatus(''), 4000);
+    const m = msgs[e.error];
+    if (m !== '') setMicStatus(m || `Erro: ${e.error}`);
+    setTimeout(() => setMicStatus(''), 5000);
   };
+
   state.recognition = rec;
 }
 
 function toggleMic() {
   if (!state.recognition) {
-    alert('Reconhecimento de voz indisponível neste sistema.\nVerifique permissão de microfone ou use digitação.');
+    alert('Reconhecimento de voz indisponível.\nVerifique: Configurações do Windows → Privacidade → Microfone → ative para aplicativos de desktop.');
     return;
   }
-  if (state.isListening) state.recognition.stop();
-  else { speechSynthesis.cancel(); state.recognition.start(); }
+  if (state.isListening) {
+    clearTimeout(_silenceTimer);
+    state.recognition.stop();
+  } else {
+    speechSynthesis.cancel();
+    _hasSpoken = false;
+    state.recognition.start();
+  }
 }
 
-function setMicStatus(msg) {
+function setMicStatus(msg, extraClass = '') {
   const el = document.getElementById('mic-status');
   el.textContent = msg;
-  el.className = 'mic-status' + (msg ? ' visible' : '');
+  el.className = 'mic-status' + (msg ? ' visible' : '') + (extraClass ? ' ' + extraClass : '');
 }
 
 // ── AI STATUS ─────────────────────────────────────────────────────────────────
@@ -658,5 +707,6 @@ function updateTtsBtn() {
 
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  // Sem limite de altura — cresce conforme o conteúdo (uso pessoal)
+  el.style.height = Math.min(el.scrollHeight, 420) + 'px';
 }
