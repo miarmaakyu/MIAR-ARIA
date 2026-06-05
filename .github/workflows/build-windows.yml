@@ -29,9 +29,7 @@ jobs:
         run: npm install
 
       - name: Build Windows installer
-        run: npm run dist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --x64 --publish never
 
       - name: List dist folder
         run: dir dist
@@ -44,5 +42,5 @@ jobs:
           path: |
             desktop/dist/*.exe
             desktop/dist/*.msi
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
