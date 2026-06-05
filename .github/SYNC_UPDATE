@@ -1,0 +1,14 @@
+Sincronização de atualização realizada em 2026-06-05 19:07:04Z
+
+Atualizações incluem:
+- Sistema automático de atualizações com electron-updater
+- Gerenciamento simplificado de chaves de API
+- Tema médico na interface
+- Funcionalidades melhoradas de microfone
+- Sistema de memória inteligente
+- Suporte para múltiplas chaves de API por provedor
+- Acesso ao sistema Windows (PowerShell/CMD)
+- Capacidade de auto-modificação para IA
+
+Versão sincronizada em: 2026-06-05
+Commit principal: 03042163b3c52cdedb98d71a29adb5d36293ac97
