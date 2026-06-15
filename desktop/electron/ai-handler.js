@@ -87,8 +87,7 @@ async function callGroq(messages, key) {
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => resp.statusText);
-      // rotateKey removido daqui — a rotação é feita pelo loop em callGroqWithRotation
-      if (resp.status === 404 && attempt === 0) {
+      if ((resp.status === 429 || resp.status === 404) && attempt === 0) {
         model = GROQ_FALLBACK_MODEL;
         continue;
       }
@@ -177,7 +176,7 @@ async function callOpenRouter(messages, key) {
       'X-Title': 'MIAR ARIA',
     },
     body: JSON.stringify({
-      model: 'deepseek/deepseek-r1:free',
+      model: 'mistralai/mistral-7b-instruct:free',
       messages,
       max_tokens: 4096,
     }),

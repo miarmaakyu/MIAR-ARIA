@@ -460,8 +460,8 @@ function setupMic() {
 
   const rec = new SR();
   rec.lang            = 'pt-BR';
-  rec.continuous      = true;   // mantém ouvindo enquanto o usuário fala
-  rec.interimResults  = true;
+  rec.continuous      = false;  // Electron: false é mais estável; auto-reinicia via onend
+  rec.interimResults  = false;  // só resultado final para evitar duplicação
   rec.maxAlternatives = 1;
 
   rec.onstart = () => {
