@@ -89,14 +89,28 @@ async function loadSettings() {
   if (pitchEl) { pitchEl.value = state.ttsPitch; document.getElementById('tts-pitch-val').textContent = state.ttsPitch; }
 
   for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
-    const badge = document.getElementById(`${provider}-badge`);
+    const badge    = document.getElementById(`${provider}-badge`);
     const clearBtn = document.getElementById(`${provider}-clear`);
-    const count = s.apiKeysCounts?.[provider] || 0;
+    const count    = s.apiKeysCounts?.[provider] || 0;
     if (badge) {
       badge.textContent = count > 0 ? `${count} chave${count > 1 ? 's' : ''} salva${count > 1 ? 's' : ''}` : 'Não configurada';
-      badge.className = `key-badge ${count > 0 ? 'set' : 'unset'}`;
+      badge.className   = `key-badge ${count > 0 ? 'set' : 'unset'}`;
     }
     if (clearBtn) clearBtn.classList.toggle('hidden', count === 0);
+
+    // Mostra placeholder nos inputs quando chave já está salva naquela posição
+    const inputs = document.querySelectorAll(`[data-provider="${provider}"]`);
+    inputs.forEach((inp, i) => {
+      if (inp.value) return; // não sobrescreve se usuário está digitando
+      const base = inp.placeholder.replace(' — salva ✓', '').replace(' — vazia', '');
+      if (i < count) {
+        inp.placeholder = base + ' — salva ✓';
+        inp.style.borderColor = 'var(--ok)';
+      } else {
+        inp.placeholder = base;
+        inp.style.borderColor = '';
+      }
+    });
   }
 }
 
@@ -125,13 +139,15 @@ window.saveAllSettings = async function () {
 /** Salva múltiplas chaves de um provider (inputs com data-provider=<provider>) */
 window.saveKeyMulti = async function (provider) {
   const inputs = document.querySelectorAll(`[data-provider="${provider}"]`);
+  // Envia TODOS os valores, incluindo vazios — o storage preserva as existentes nos campos vazios
   const keys = [];
-  inputs.forEach(inp => { const v = inp.value.trim(); if (v) keys.push(v); });
-  if (!keys.length) { showKeyResult(provider, false, 'Nenhuma chave inserida.'); return; }
+  inputs.forEach(inp => keys.push(inp.value.trim()));
+  const hasNew = keys.some(k => k.length > 0);
+  if (!hasNew) { showKeyResult(provider, false, 'Nenhuma chave inserida.'); return; }
   await window.miar.saveSettings({ apiKeys: { [provider]: keys } });
-  inputs.forEach(inp => { inp.value = ''; inp.placeholder = inp.placeholder.replace('Chave ', '✓ Chave '); });
+  inputs.forEach(inp => { inp.value = ''; });
   await loadSettings();
-  showKeyResult(provider, true, `✓ ${keys.length} chave(s) salva(s). Nunca exibidas completas por segurança.`);
+  showKeyResult(provider, true, '✓ Chaves salvas — campos vazios preservam chaves já existentes.');
   updateAiStatus();
 };
 

@@ -87,9 +87,7 @@ async function callGroq(messages, key) {
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => resp.statusText);
-      if ((resp.status === 429 || resp.status === 401) && attempt === 0) {
-        rotateKey('groq');
-      }
+      // rotateKey removido daqui — a rotação é feita pelo loop em callGroqWithRotation
       if (resp.status === 404 && attempt === 0) {
         model = GROQ_FALLBACK_MODEL;
         continue;
@@ -105,15 +103,22 @@ async function callGroq(messages, key) {
 async function callGroqWithRotation(messages) {
   const keys = getKeys('groq');
   if (!keys.length) throw new Error('Nenhuma chave Groq configurada.');
+  const startIdx = keyIndexes.groq;
   const errors = [];
   for (let i = 0; i < keys.length; i++) {
-    const key = nextKey('groq');
+    const idx = (startIdx + i) % keys.length;
+    const key = keys[idx];
     try {
-      return await callGroq(messages, key);
+      const result = await callGroq(messages, key);
+      // avança para a próxima chave na próxima chamada (round-robin real)
+      keyIndexes.groq = (idx + 1) % keys.length;
+      return result;
     } catch (e) {
       errors.push(sanitizeError(e));
     }
   }
+  // todas falharam — avança índice mesmo assim para próxima tentativa
+  keyIndexes.groq = (startIdx + 1) % keys.length;
   throw new Error(`Groq (${keys.length} chave(s)): ${errors.join(' | ')}`);
 }
 
@@ -135,7 +140,6 @@ async function callGemini(messages, key) {
   });
   if (!resp.ok) {
     const errText = await resp.text().catch(() => resp.statusText);
-    if (resp.status === 429 || resp.status === 401) rotateKey('gemini');
     throw new Error(`Gemini HTTP ${resp.status}: ${errText.substring(0, 200)}`);
   }
   const data = await resp.json();
@@ -145,15 +149,19 @@ async function callGemini(messages, key) {
 async function callGeminiWithRotation(messages) {
   const keys = getKeys('gemini');
   if (!keys.length) throw new Error('Nenhuma chave Gemini configurada.');
+  const startIdx = keyIndexes.gemini;
   const errors = [];
   for (let i = 0; i < keys.length; i++) {
-    const key = nextKey('gemini');
+    const idx = (startIdx + i) % keys.length;
     try {
-      return await callGemini(messages, key);
+      const result = await callGemini(messages, keys[idx]);
+      keyIndexes.gemini = (idx + 1) % keys.length;
+      return result;
     } catch (e) {
       errors.push(sanitizeError(e));
     }
   }
+  keyIndexes.gemini = (startIdx + 1) % keys.length;
   throw new Error(`Gemini (${keys.length} chave(s)): ${errors.join(' | ')}`);
 }
 
@@ -177,7 +185,6 @@ async function callOpenRouter(messages, key) {
   });
   if (!resp.ok) {
     const errText = await resp.text().catch(() => resp.statusText);
-    if (resp.status === 429 || resp.status === 401) rotateKey('openrouter');
     throw new Error(`OpenRouter HTTP ${resp.status}: ${errText.substring(0, 200)}`);
   }
   const data = await resp.json();
@@ -187,15 +194,19 @@ async function callOpenRouter(messages, key) {
 async function callOpenRouterWithRotation(messages) {
   const keys = getKeys('openrouter');
   if (!keys.length) throw new Error('Nenhuma chave OpenRouter configurada.');
+  const startIdx = keyIndexes.openrouter;
   const errors = [];
   for (let i = 0; i < keys.length; i++) {
-    const key = nextKey('openrouter');
+    const idx = (startIdx + i) % keys.length;
     try {
-      return await callOpenRouter(messages, key);
+      const result = await callOpenRouter(messages, keys[idx]);
+      keyIndexes.openrouter = (idx + 1) % keys.length;
+      return result;
     } catch (e) {
       errors.push(sanitizeError(e));
     }
   }
+  keyIndexes.openrouter = (startIdx + 1) % keys.length;
   throw new Error(`OpenRouter (${keys.length} chave(s)): ${errors.join(' | ')}`);
 }
 
