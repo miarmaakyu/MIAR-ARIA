@@ -8,7 +8,7 @@
 const storageHandler = require('./storage-handler');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const GROQ_PRIMARY_MODEL = 'llama-3.3-70b-versatile';
@@ -143,7 +143,7 @@ async function callGemini(messages, key) {
     throw new Error(`Gemini HTTP ${resp.status}: ${errText.substring(0, 200)}`);
   }
   const data = await resp.json();
-  return { ok: true, text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini', model: 'gemini-1.5-flash' };
+  return { ok: true, text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini', model: 'gemini-2.0-flash' };
 }
 
 async function callGeminiWithRotation(messages) {
@@ -177,7 +177,7 @@ async function callOpenRouter(messages, key) {
       'X-Title': 'MIAR ARIA',
     },
     body: JSON.stringify({
-      model: 'meta-llama/llama-3.1-8b-instruct:free',
+      model: 'deepseek/deepseek-r1:free',
       messages,
       max_tokens: 4096,
     }),
