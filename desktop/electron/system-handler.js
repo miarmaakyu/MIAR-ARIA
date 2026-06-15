@@ -1,126 +1,156 @@
 /**
- * MIAR ÁRIA — System Handler + Auto-desenvolvimento
- * Executa comandos PowerShell e CMD no Windows com timeout e captura de output.
- * Uso pessoal — acesso total ao sistema do usuário.
+ * MIAR ÁRIA — System Handler
+ * Executa comandos PowerShell no Windows com spawn correto + timeout + captura de output.
  */
 
-const { exec, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const os   = require('os');
 const path = require('path');
 const fs   = require('fs');
 
-const CMD_TIMEOUT_MS = 30000; // 30s por comando
+const CMD_TIMEOUT_MS = 30000;
 
 /**
- * Executa um comando PowerShell e retorna { ok, stdout, stderr, exitCode }
+ * Executa PowerShell via spawn (correto — sem aspas erradas nos argumentos)
  */
 function runPowerShell(command) {
   return new Promise((resolve) => {
-    // Encapsula em try/catch PowerShell para capturar erros do próprio script
     const wrapped = `try { ${command} } catch { Write-Output "ERRO_PS: $_" }`;
-    const args = [
-      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+
+    const child = spawn('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
       '-Command', wrapped,
-    ];
-    const child = exec(
-      `powershell.exe ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`,
-      { timeout: CMD_TIMEOUT_MS, maxBuffer: 5 * 1024 * 1024, windowsHide: true },
-      (err, stdout, stderr) => {
-        resolve({
-          ok: !err || err.code === 0,
-          stdout: (stdout || '').trim(),
-          stderr: (stderr || '').trim(),
-          exitCode: err?.code ?? 0,
-          command,
-        });
-      }
-    );
-    child.on('error', (e) => resolve({ ok: false, stdout: '', stderr: e.message, exitCode: -1, command }));
+    ], {
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (d) => { stdout += d.toString(); });
+    child.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    const timer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch {}
+      resolve({ ok: false, stdout: stdout.trim(), stderr: 'Timeout após 30s.', exitCode: -1, command });
+    }, CMD_TIMEOUT_MS);
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({
+        ok: code === 0,
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+        exitCode: code ?? 0,
+        command,
+      });
+    });
+
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      resolve({ ok: false, stdout: '', stderr: e.message, exitCode: -1, command });
+    });
   });
 }
 
 /**
- * Executa CMD clássico
+ * Executa CMD clássico via spawn
  */
 function runCmd(command) {
   return new Promise((resolve) => {
-    exec(command, { timeout: CMD_TIMEOUT_MS, maxBuffer: 5 * 1024 * 1024, windowsHide: true, shell: 'cmd.exe' },
-      (err, stdout, stderr) => {
-        resolve({
-          ok: !err || err.code === 0,
-          stdout: (stdout || '').trim(),
-          stderr: (stderr || '').trim(),
-          exitCode: err?.code ?? 0,
-          command,
-        });
-      }
-    );
+    const child = spawn('cmd.exe', ['/c', command], {
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (d) => { stdout += d.toString(); });
+    child.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    const timer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch {}
+      resolve({ ok: false, stdout: stdout.trim(), stderr: 'Timeout após 30s.', exitCode: -1, command });
+    }, CMD_TIMEOUT_MS);
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ ok: code === 0, stdout: stdout.trim(), stderr: stderr.trim(), exitCode: code ?? 0, command });
+    });
+
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      resolve({ ok: false, stdout: '', stderr: e.message, exitCode: -1, command });
+    });
   });
 }
 
 /**
- * Coleta informações do sistema para contexto da IA.
- * Inclui o caminho dos próprios arquivos do app para auto-desenvolvimento.
+ * Executa comando — PowerShell por padrão
+ */
+async function runCommand(command) {
+  if (!command || !command.trim()) {
+    return { ok: false, stdout: '', stderr: 'Comando vazio.', exitCode: -1 };
+  }
+  const cmd = command.trim();
+
+  // Bloqueios mínimos de segurança
+  const BLOCKED = [
+    /format\s+[a-z]:\s*$/i,
+    /del\s+\/f\s+\/s\s+\/q\s+c:\\\s*$/i,
+    /rmdir\s+\/s\s+\/q\s+c:\\\s*$/i,
+  ];
+  for (const p of BLOCKED) {
+    if (p.test(cmd)) return { ok: false, stdout: '', stderr: 'Comando bloqueado por segurança.', exitCode: -1 };
+  }
+
+  return runPowerShell(cmd);
+}
+
+/**
+ * Coleta informações do sistema para o contexto da IA
  */
 function getSystemInfo() {
   try {
-    // Caminho real dos arquivos-fonte do app (onde a IA pode ler/modificar a si mesma)
-    const appDir = path.dirname(path.dirname(__filename)); // desktop/
+    const appDir     = path.dirname(path.dirname(__filename));
     const electronDir = path.join(appDir, 'electron');
     const srcDir      = path.join(appDir, 'src');
 
-    // Em produção (app instalado), os arquivos ficam em resources/app/
-    // __filename aponta para o .js correto em ambos os casos
-    const info = {
-      os: `Windows ${os.release()}`,
-      arch: os.arch(),
-      hostname: os.hostname(),
-      username: os.userInfo().username,
-      homeDir: os.homedir(),
-      tempDir: os.tmpdir(),
+    return {
+      os:         `Windows ${os.release()}`,
+      arch:       os.arch(),
+      hostname:   os.hostname(),
+      username:   os.userInfo().username,
+      homeDir:    os.homedir(),
+      tempDir:    os.tmpdir(),
       totalMemGB: (os.totalmem() / 1024 / 1024 / 1024).toFixed(1),
       freeMemGB:  (os.freemem()  / 1024 / 1024 / 1024).toFixed(1),
-      cpus: os.cpus().length,
-      cpuModel: os.cpus()[0]?.model || 'desconhecido',
-      platform: os.platform(),
-      uptime: Math.round(os.uptime() / 3600) + 'h',
-      // Caminhos do próprio app — para auto-desenvolvimento
+      cpus:       os.cpus().length,
+      cpuModel:   os.cpus()[0]?.model || 'desconhecido',
+      platform:   os.platform(),
+      uptime:     Math.round(os.uptime() / 3600) + 'h',
       appDir,
       electronDir,
       srcDir,
       selfFiles: {
-        aiHandler:        path.join(electronDir, 'ai-handler.js'),
-        mainHandler:      path.join(electronDir, 'main.js'),
-        memoryHandler:    path.join(electronDir, 'memory-handler.js'),
-        systemHandler:    path.join(electronDir, 'system-handler.js'),
-        storageHandler:   path.join(electronDir, 'storage-handler.js'),
-        fileHandler:      path.join(electronDir, 'file-handler.js'),
-        renderer:         path.join(srcDir, 'renderer.js'),
-        styles:           path.join(srcDir, 'styles.css'),
-        html:             path.join(srcDir, 'index.html'),
+        aiHandler:      path.join(electronDir, 'ai-handler.js'),
+        mainHandler:    path.join(electronDir, 'main.js'),
+        memoryHandler:  path.join(electronDir, 'memory-handler.js'),
+        systemHandler:  path.join(electronDir, 'system-handler.js'),
+        storageHandler: path.join(electronDir, 'storage-handler.js'),
+        fileHandler:    path.join(electronDir, 'file-handler.js'),
+        renderer:       path.join(srcDir, 'renderer.js'),
+        styles:         path.join(srcDir, 'styles.css'),
+        html:           path.join(srcDir, 'index.html'),
       },
     };
-    return info;
   } catch {
     return {};
   }
-}
-
-/**
- * Executa comando genérico (detecta tipo automaticamente)
- */
-async function runCommand(command) {
-  if (!command || !command.trim()) return { ok: false, stdout: '', stderr: 'Comando vazio.', exitCode: -1 };
-  const cmd = command.trim();
-
-  // Comandos perigosos bloqueados para segurança mínima
-  const BLOCKED = [/format\s+[a-z]:/i, /rm\s+-rf\s+\//i, /del\s+\/f\s+\/s\s+\/q\s+c:\\/i];
-  for (const pattern of BLOCKED) {
-    if (pattern.test(cmd)) return { ok: false, stdout: '', stderr: 'Comando bloqueado por segurança.', exitCode: -1 };
-  }
-
-  // Usa PowerShell por padrão (mais poderoso no Windows 11)
-  return runPowerShell(cmd);
 }
 
 module.exports = { runCommand, runPowerShell, runCmd, getSystemInfo };
