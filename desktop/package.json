@@ -1,6 +1,6 @@
 {
   "name": "miar-aria",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MIAR ARIA - Assistente de IA pessoal com voz, microfone e memoria local",
   "author": "Robson Calaça",
   "repository": {
@@ -41,7 +41,8 @@
     "publish": {
       "provider": "github",
       "owner": "miarmaakyu",
-      "repo": "MIAR-ARIA"
+      "repo": "MIAR-ARIA",
+      "releaseType": "release"
     },
     "win": {
       "target": [
