@@ -50,4 +50,7 @@ contextBridge.exposeInMainWorld('miar', {
   onUpdaterStatus: (cb) => ipcRenderer.on('updater:status', (_e, data) => cb(data)),
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
   checkForUpdate: () => ipcRenderer.invoke('updater:check-now'),
+
+  // Versão do app
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
 });

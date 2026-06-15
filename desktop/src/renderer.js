@@ -31,6 +31,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateAiStatus();
   setupMic();
   setupEventListeners();
+  // Mostra versão no canto superior direito
+  if (window.miar?.getAppVersion) {
+    window.miar.getAppVersion().then(v => {
+      const el = document.getElementById('app-version');
+      if (el) el.textContent = `v${v}`;
+    });
+  }
 });
 
 // ── VOICES / TTS ──────────────────────────────────────────────────────────────

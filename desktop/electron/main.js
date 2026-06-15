@@ -93,6 +93,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// ── APP VERSION ───────────────────────────────────────────────────────────────
+ipcMain.handle('app:get-version', () => app.getVersion());
+
 // ── AI ────────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {
