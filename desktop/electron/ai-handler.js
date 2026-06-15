@@ -365,4 +365,39 @@ function getKeyStatus() {
   };
 }
 
-module.exports = { sendMessage, testKey, getKeyStatus };
+// ── WHISPER (transcrição de áudio via Groq) ───────────────────────────────────
+
+async function transcribeWithWhisper(audioBuffer, mimeType = 'audio/webm') {
+  const keys = getKeys('groq');
+  if (!keys.length) throw new Error('Nenhuma chave Groq configurada para Whisper.');
+  const key      = keys[keyIndexes.groq % keys.length];
+  const boundary = '----WB' + Date.now().toString(36);
+  const ext      = mimeType.includes('mp4') ? 'mp4' : 'webm';
+
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.${ext}"\r\nContent-Type: ${mimeType}\r\n\r\n`),
+    Buffer.from(audioBuffer),
+    Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-large-v3-turbo\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\npt\r\n`),
+    Buffer.from(`--${boundary}--\r\n`),
+  ]);
+
+  const resp = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method : 'POST',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type' : `multipart/form-data; boundary=${boundary}`,
+    },
+    body,
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => resp.statusText);
+    throw new Error(`Whisper HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+  }
+  const data = await resp.json();
+  return data.text || '';
+}
+
+module.exports = { sendMessage, testKey, getKeyStatus, transcribeWithWhisper };

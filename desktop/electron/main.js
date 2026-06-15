@@ -96,6 +96,11 @@ app.on('window-all-closed', () => {
 // ── APP VERSION ───────────────────────────────────────────────────────────────
 ipcMain.handle('app:get-version', () => app.getVersion());
 
+// ── WHISPER ───────────────────────────────────────────────────────────────────
+ipcMain.handle('whisper:transcribe', async (_e, buffer, mimeType) => {
+  return await aiHandler.transcribeWithWhisper(Buffer.from(buffer), mimeType);
+});
+
 // ── AI ────────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {

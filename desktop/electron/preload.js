@@ -53,4 +53,7 @@ contextBridge.exposeInMainWorld('miar', {
 
   // Versão do app
   getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+
+  // Whisper — transcrição de áudio
+  transcribeAudio: (buffer, mimeType) => ipcRenderer.invoke('whisper:transcribe', buffer, mimeType),
 });

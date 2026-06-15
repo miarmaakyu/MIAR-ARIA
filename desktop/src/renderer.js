@@ -442,129 +442,99 @@ async function sendMessage() {
   }
 }
 
-// ── MICROPHONE SAGAZ — auto-disparo após 1,5 s de silêncio ──────────────────
-const MIC_SILENCE_MS = 1500;  // ms de silêncio para disparar
-let _silenceTimer       = null;
-let _hasSpoken          = false;
-let _countdownTimer     = null;
-let _userWantsListening = false;
+// ── MICROPHONE — Whisper (Groq) via MediaRecorder ────────────────────────────
+let _mediaRecorder   = null;
+let _audioChunks     = [];
+let _silenceInterval = null;
 
 function setupMic() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
+  if (!navigator.mediaDevices?.getUserMedia) {
     const btn = document.getElementById('mic-btn');
-    btn.title = 'Reconhecimento de voz indisponível. Verifique permissão de microfone.';
-    btn.style.opacity = '0.4';
-    return;
+    if (btn) { btn.title = 'Microfone não disponível.'; btn.style.opacity = '0.4'; }
   }
-
-  const rec = new SR();
-  rec.lang            = 'pt-BR';
-  rec.continuous      = false;  // Electron: false é mais estável; auto-reinicia via onend
-  rec.interimResults  = false;  // só resultado final para evitar duplicação
-  rec.maxAlternatives = 1;
-
-  rec.onstart = () => {
-    state.isListening = true;
-    _hasSpoken        = false;
-    document.getElementById('mic-btn').classList.add('listening');
-    setMicStatus('🎙 Ouvindo…', 'listening-active');
-  };
-
-  rec.onspeechstart = () => { _hasSpoken = true; };
-
-  rec.onresult = (e) => {
-    const input = document.getElementById('message-input');
-    let finalText = '', interimText = '';
-
-    for (const r of e.results) {
-      if (r.isFinal) finalText   += r[0].transcript + ' ';
-      else           interimText += r[0].transcript;
-    }
-
-    const combined = (finalText || interimText).trim();
-    if (combined) {
-      input.value = combined;
-      autoResizeTextarea(input);
-      _hasSpoken = true;
-    }
-
-    // Reinicia o temporizador de silêncio a cada resultado
-    clearTimeout(_silenceTimer);
-    clearTimeout(_countdownTimer);
-
-    if (finalText.trim()) {
-      // Após fala final detectada, aguarda silêncio e dispara
-      setMicStatus(`✔ "${finalText.trim().substring(0, 40)}…" — disparando em ${MIC_SILENCE_MS / 1000}s`, 'listening-active');
-      _silenceTimer = setTimeout(() => {
-        if (state.isListening) {
-          rec.stop();  // onend cuidará do envio
-        }
-      }, MIC_SILENCE_MS);
-    } else {
-      setMicStatus('🎙 Ouvindo…', 'listening-active');
-    }
-  };
-
-  rec.onend = () => {
-    clearTimeout(_silenceTimer);
-    clearTimeout(_countdownTimer);
-
-    const v = document.getElementById('message-input').value.trim();
-    if (v && _hasSpoken) {
-      // Tinha fala — envia e para
-      _userWantsListening = false;
-      state.isListening   = false;
-      document.getElementById('mic-btn').classList.remove('listening');
-      setMicStatus('');
-      sendMessage();
-      return;
-    }
-
-    // Sem fala — reinicia automaticamente se o usuário ainda quer ouvir
-    if (_userWantsListening) {
-      try { rec.start(); } catch {}
-      return;
-    }
-
-    state.isListening = false;
-    document.getElementById('mic-btn').classList.remove('listening');
-    setMicStatus('');
-  };
-
-  rec.onerror = (e) => {
-    clearTimeout(_silenceTimer);
-    clearTimeout(_countdownTimer);
-    state.isListening = false;
-    document.getElementById('mic-btn').classList.remove('listening');
-    const msgs = {
-      'not-allowed' : 'Permissão de microfone negada. Vá em Configurações do Windows → Privacidade → Microfone.',
-      'no-speech'   : 'Nenhuma fala detectada. Tente novamente.',
-      'network'     : 'Reconhecimento de voz requer conexão à internet.',
-      'aborted'     : '',
-    };
-    const m = msgs[e.error];
-    if (m !== '') setMicStatus(m || `Erro: ${e.error}`);
-    setTimeout(() => setMicStatus(''), 5000);
-  };
-
-  state.recognition = rec;
 }
 
-function toggleMic() {
-  if (!state.recognition) {
-    alert('Reconhecimento de voz indisponível.\nVerifique: Configurações do Windows → Privacidade → Microfone → ative para aplicativos de desktop.');
+async function toggleMic() {
+  if (state.isListening) {
+    if (_mediaRecorder && _mediaRecorder.state !== 'inactive') _mediaRecorder.stop();
     return;
   }
-  if (state.isListening || _userWantsListening) {
-    _userWantsListening = false;
-    clearTimeout(_silenceTimer);
-    state.recognition.stop();
-  } else {
-    speechSynthesis.cancel();
-    _hasSpoken          = false;
-    _userWantsListening = true;
-    state.recognition.start();
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/webm';
+
+    _mediaRecorder = new MediaRecorder(stream, { mimeType });
+    _audioChunks   = [];
+
+    _mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) _audioChunks.push(e.data); };
+
+    _mediaRecorder.onstop = async () => {
+      clearInterval(_silenceInterval);
+      stream.getTracks().forEach(t => t.stop());
+      state.isListening = false;
+      document.getElementById('mic-btn').classList.remove('listening');
+
+      if (!_audioChunks.length) { setMicStatus(''); return; }
+
+      setMicStatus('🔄 Transcrevendo com Whisper…');
+      try {
+        const blob   = new Blob(_audioChunks, { type: mimeType });
+        const buffer = await blob.arrayBuffer();
+        const text   = await window.miar.transcribeAudio(buffer, mimeType);
+        if (text && text.trim()) {
+          const input = document.getElementById('message-input');
+          input.value = text.trim();
+          autoResizeTextarea(input);
+          setMicStatus('');
+          sendMessage();
+        } else {
+          setMicStatus('Nenhuma fala detectada. Tente novamente.');
+          setTimeout(() => setMicStatus(''), 3000);
+        }
+      } catch (err) {
+        setMicStatus(`Erro Whisper: ${(err.message || '').substring(0, 60)}`);
+        setTimeout(() => setMicStatus(''), 5000);
+      }
+    };
+
+    // Detecção de silêncio via AudioContext
+    const audioCtx = new AudioContext();
+    const src      = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const dataArr = new Uint8Array(analyser.frequencyBinCount);
+    let silenceFrames = 0;
+
+    _silenceInterval = setInterval(() => {
+      analyser.getByteFrequencyData(dataArr);
+      const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
+      if (avg < 8) {
+        silenceFrames++;
+        if (silenceFrames >= 4) {
+          clearInterval(_silenceInterval);
+          audioCtx.close();
+          if (_mediaRecorder && _mediaRecorder.state === 'recording') _mediaRecorder.stop();
+        }
+      } else {
+        silenceFrames = 0;
+      }
+    }, 500);
+
+    _mediaRecorder.start(100);
+    state.isListening = true;
+    document.getElementById('mic-btn').classList.add('listening');
+    setMicStatus('🎙 Ouvindo… (clique para parar)');
+
+  } catch (err) {
+    const msgs = {
+      NotAllowedError : 'Permissão de microfone negada. Ative em Configurações → Privacidade → Microfone.',
+      NotFoundError   : 'Nenhum microfone encontrado.',
+    };
+    setMicStatus(msgs[err.name] || `Erro: ${err.message}`);
+    setTimeout(() => setMicStatus(''), 5000);
   }
 }
 
