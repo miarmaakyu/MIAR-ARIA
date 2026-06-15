@@ -437,9 +437,10 @@ async function sendMessage() {
 
 // ── MICROPHONE SAGAZ — auto-disparo após 1,5 s de silêncio ──────────────────
 const MIC_SILENCE_MS = 1500;  // ms de silêncio para disparar
-let _silenceTimer    = null;
-let _hasSpoken       = false;
-let _countdownTimer  = null;
+let _silenceTimer       = null;
+let _hasSpoken          = false;
+let _countdownTimer     = null;
+let _userWantsListening = false;
 
 function setupMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -462,6 +463,8 @@ function setupMic() {
     document.getElementById('mic-btn').classList.add('listening');
     setMicStatus('🎙 Ouvindo…', 'listening-active');
   };
+
+  rec.onspeechstart = () => { _hasSpoken = true; };
 
   rec.onresult = (e) => {
     const input = document.getElementById('message-input');
@@ -499,15 +502,27 @@ function setupMic() {
   rec.onend = () => {
     clearTimeout(_silenceTimer);
     clearTimeout(_countdownTimer);
-    state.isListening = false;
-    document.getElementById('mic-btn').classList.remove('listening');
-    setMicStatus('');
 
     const v = document.getElementById('message-input').value.trim();
     if (v && _hasSpoken) {
-      // Auto-disparo imediato — sem delay extra
+      // Tinha fala — envia e para
+      _userWantsListening = false;
+      state.isListening   = false;
+      document.getElementById('mic-btn').classList.remove('listening');
+      setMicStatus('');
       sendMessage();
+      return;
     }
+
+    // Sem fala — reinicia automaticamente se o usuário ainda quer ouvir
+    if (_userWantsListening) {
+      try { rec.start(); } catch {}
+      return;
+    }
+
+    state.isListening = false;
+    document.getElementById('mic-btn').classList.remove('listening');
+    setMicStatus('');
   };
 
   rec.onerror = (e) => {
@@ -534,12 +549,14 @@ function toggleMic() {
     alert('Reconhecimento de voz indisponível.\nVerifique: Configurações do Windows → Privacidade → Microfone → ative para aplicativos de desktop.');
     return;
   }
-  if (state.isListening) {
+  if (state.isListening || _userWantsListening) {
+    _userWantsListening = false;
     clearTimeout(_silenceTimer);
     state.recognition.stop();
   } else {
     speechSynthesis.cancel();
-    _hasSpoken = false;
+    _hasSpoken          = false;
+    _userWantsListening = true;
     state.recognition.start();
   }
 }
@@ -743,11 +760,20 @@ window.copyMsg = function (id) {
 // ── UPDATER NOTIFICATIONS ─────────────────────────────────────────────────────
 if (window.miar?.onUpdaterStatus) {
   window.miar.onUpdaterStatus((data) => {
+    const bar = document.getElementById('update-bar');
+    const span = bar?.querySelector('span');
     if (data.type === 'available') {
-      setMicStatus(`⬇ Nova versão ${data.version} — baixando…`);
+      if (bar) { bar.style.display = 'flex'; }
+      if (span) span.textContent = `⬇ Nova versão ${data.version} — baixando…`;
+    } else if (data.type === 'progress') {
+      if (bar) { bar.style.display = 'flex'; }
+      if (span) span.textContent = `⬇ Baixando atualização… ${data.percent}%`;
     } else if (data.type === 'downloaded') {
-      const bar = document.getElementById('update-bar');
-      if (bar) { bar.style.display = 'flex'; bar.querySelector('span').textContent = `Versão ${data.version} pronta`; }
+      if (bar) { bar.style.display = 'flex'; }
+      if (span) span.textContent = `⬆ Versão ${data.version} pronta — clique para instalar`;
+    } else if (data.type === 'error') {
+      if (span) span.textContent = `⚠ Erro ao atualizar: ${data.message?.substring(0, 60)}`;
+      if (bar) { bar.style.display = 'flex'; }
     }
   });
 }

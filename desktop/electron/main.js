@@ -63,6 +63,9 @@ app.whenReady().then(() => {
       autoUpdater.on('update-available', (info) => {
         mainWindow?.webContents.send('updater:status', { type: 'available', version: info.version });
       });
+      autoUpdater.on('download-progress', (p) => {
+        mainWindow?.webContents.send('updater:status', { type: 'progress', percent: Math.round(p.percent) });
+      });
       autoUpdater.on('update-downloaded', (info) => {
         mainWindow?.webContents.send('updater:status', { type: 'downloaded', version: info.version });
       });
@@ -70,8 +73,8 @@ app.whenReady().then(() => {
         mainWindow?.webContents.send('updater:status', { type: 'error', message: err.message });
       });
 
-      // Verifica 30 segundos após abrir, depois a cada 2h
-      setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 30000);
+      // Verifica 5 segundos após abrir, depois a cada 2h
+      setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 5000);
       setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 2 * 60 * 60 * 1000);
 
       ipcMain.handle('updater:install-now', () => autoUpdater.quitAndInstall());
