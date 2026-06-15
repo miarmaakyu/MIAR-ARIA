@@ -91,28 +91,33 @@ async function loadSettings() {
   for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
     const badge    = document.getElementById(`${provider}-badge`);
     const clearBtn = document.getElementById(`${provider}-clear`);
+    const list     = document.getElementById(`${provider}-keys-list`);
     const count    = s.apiKeysCounts?.[provider] || 0;
+    const masked   = s.apiKeysMasked?.[provider] || [];
+
     if (badge) {
-      badge.textContent = count > 0 ? `${count} chave${count > 1 ? 's' : ''} salva${count > 1 ? 's' : ''}` : 'Não configurada';
+      badge.textContent = count > 0 ? `${count} chave${count > 1 ? 's' : ''}` : 'Nenhuma';
       badge.className   = `key-badge ${count > 0 ? 'set' : 'unset'}`;
     }
     if (clearBtn) clearBtn.classList.toggle('hidden', count === 0);
 
-    // Mostra placeholder nos inputs quando chave já está salva naquela posição
-    const inputs = document.querySelectorAll(`[data-provider="${provider}"]`);
-    inputs.forEach((inp, i) => {
-      if (inp.value) return; // não sobrescreve se usuário está digitando
-      const base = inp.placeholder.replace(' — salva ✓', '').replace(' — vazia', '');
-      if (i < count) {
-        inp.placeholder = base + ' — salva ✓';
-        inp.style.borderColor = 'var(--ok)';
-      } else {
-        inp.placeholder = base;
-        inp.style.borderColor = '';
-      }
-    });
+    // Renderiza lista de chaves salvas (mascaradas) com botão deletar individual
+    if (list) {
+      list.innerHTML = masked.map((m, i) => `
+        <div class="saved-key-item">
+          <span class="saved-key-icon">🔑</span>
+          <span class="saved-key-value">${escHtml(m)}</span>
+          <button class="saved-key-del" onclick="deleteOneKey('${provider}',${i})" title="Remover esta chave">✕</button>
+        </div>`).join('');
+    }
   }
 }
+
+window.deleteOneKey = async function (provider, index) {
+  await window.miar.deleteProviderKey({ provider, index });
+  await loadSettings();
+  updateAiStatus();
+};
 
 window.clearProviderKeys = async function (provider) {
   if (!confirm(`Apagar todas as chaves de ${provider}?`)) return;
@@ -136,30 +141,28 @@ window.saveAllSettings = async function () {
 
 // ── KEY MANAGEMENT ────────────────────────────────────────────────────────────
 
-/** Salva múltiplas chaves de um provider (inputs com data-provider=<provider>) */
-window.saveKeyMulti = async function (provider) {
-  const inputs = document.querySelectorAll(`[data-provider="${provider}"]`);
-  // Envia TODOS os valores, incluindo vazios — o storage preserva as existentes nos campos vazios
-  const keys = [];
-  inputs.forEach(inp => keys.push(inp.value.trim()));
-  const hasNew = keys.some(k => k.length > 0);
-  if (!hasNew) { showKeyResult(provider, false, 'Nenhuma chave inserida.'); return; }
-  await window.miar.saveSettings({ apiKeys: { [provider]: keys } });
-  inputs.forEach(inp => { inp.value = ''; });
+/** Lê o textarea, parseia chaves (vírgula ou newline), ADICIONA às existentes */
+window.saveKeyTextarea = async function (provider) {
+  const ta = document.getElementById(`${provider}-textarea`);
+  const raw = ta?.value || '';
+  const newKeys = raw.split(/[\n,;]+/).map(k => k.trim()).filter(Boolean);
+  if (!newKeys.length) { showKeyResult(provider, false, 'Cole pelo menos uma chave.'); return; }
+  const res = await window.miar.appendProviderKeys({ provider, keys: newKeys });
+  if (ta) ta.value = '';
   await loadSettings();
-  showKeyResult(provider, true, '✓ Chaves salvas — campos vazios preservam chaves já existentes.');
+  showKeyResult(provider, true, `✓ ${newKeys.length} adicionada(s). Total: ${res.total}`);
   updateAiStatus();
 };
 
-/** Testa a primeira chave inserida no campo */
-window.testKeyFromField = async function (provider) {
-  const inputs = document.querySelectorAll(`[data-provider="${provider}"]`);
-  let key = '';
-  for (const inp of inputs) { if (inp.value.trim()) { key = inp.value.trim(); break; } }
-  if (!key) { showKeyResult(provider, false, 'Insira uma chave no campo 1 para testar.'); return; }
+/** Testa a primeira chave colada no textarea */
+window.testKeyFromTextarea = async function (provider) {
+  const ta = document.getElementById(`${provider}-textarea`);
+  const raw = ta?.value || '';
+  const keys = raw.split(/[\n,;]+/).map(k => k.trim()).filter(Boolean);
+  if (!keys.length) { showKeyResult(provider, false, 'Cole uma chave para testar.'); return; }
   showKeyResult(provider, null, 'Testando…');
-  const res = await window.miar.testKey({ provider, key });
-  if (res.ok) showKeyResult(provider, true, `✓ ${res.provider} respondeu: "${(res.text||'').substring(0,60)}" — modelo: ${res.model}`);
+  const res = await window.miar.testKey({ provider, key: keys[0] });
+  if (res.ok) showKeyResult(provider, true, `✓ OK — modelo: ${res.model} — "${(res.text||'').substring(0,50)}"`);
   else showKeyResult(provider, false, `✗ ${res.error}`);
 };
 

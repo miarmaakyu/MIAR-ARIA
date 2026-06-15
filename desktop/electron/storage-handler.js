@@ -67,6 +67,21 @@ function getSettings() {
   return result;
 }
 
+/** Adiciona novas chaves a um provider sem apagar as existentes (sem duplicatas) */
+function appendProviderKeys(provider, newKeys) {
+  const current = readJSON(settingsFile, { apiKeys: {} });
+  current.apiKeys = current.apiKeys || {};
+  const existing = Array.isArray(current.apiKeys[provider]) ? current.apiKeys[provider] : (current.apiKeys[provider] ? [current.apiKeys[provider]] : []);
+  const merged = [...existing];
+  for (const k of newKeys) {
+    if (k && !merged.includes(k)) merged.push(k);
+  }
+  current.apiKeys[provider] = merged.filter(Boolean);
+  writeJSON(settingsFile, current);
+  appendLog(`[SETTINGS] ${newKeys.length} chave(s) adicionada(s) ao ${provider}. Total: ${merged.length}`);
+  return { ok: true, total: merged.length };
+}
+
 /** Remove todas as chaves de um provider */
 function deleteProviderKeys(provider) {
   const current = readJSON(settingsFile, { apiKeys: {} });
@@ -219,7 +234,7 @@ function appendLog(line) {
 
 module.exports = {
   init, getSettings, saveSettings, getSettingsRaw,
-  deleteProviderKeys, deleteProviderKey,
+  appendProviderKeys, deleteProviderKeys, deleteProviderKey,
   getConversations, getConversation, createConversation,
   saveMessage, updateConversationTitle, deleteConversation,
   searchConversations, getLastConversationId, setLastConversationId,

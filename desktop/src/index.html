@@ -67,65 +67,58 @@
 
     <div class="modal-section">
       <h3>Chaves de IA</h3>
-      <p style="font-size:12px;color:var(--text3)">As chaves são salvas localmente no seu computador. Nunca são enviadas para terceiros além do provider escolhido.</p>
+      <p style="font-size:12px;color:var(--text3)">Cole uma ou várias chaves — uma por linha ou separadas por vírgula. Salvas localmente, nunca enviadas a terceiros.</p>
 
-      <!-- GROQ — até 3 chaves -->
+      <!-- GROQ -->
       <div class="key-row" id="key-groq">
         <div class="key-row-header">
-          <span class="key-label">Groq</span>
-          <span class="key-badge unset" id="groq-badge">Não configurada</span>
-          <button class="btn-clear-keys hidden" id="groq-clear" onclick="clearProviderKeys('groq')" title="Apagar todas as chaves Groq">🗑 Limpar</button>
+          <span class="key-label">🟣 Groq</span>
+          <span class="key-badge unset" id="groq-badge">Nenhuma</span>
+          <button class="btn-clear-keys hidden" id="groq-clear" onclick="clearProviderKeys('groq')">🗑 Apagar tudo</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Formato: <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">gsk_…</code> — até 3 chaves para rotação automática</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <input type="password" class="groq-key" data-provider="groq" placeholder="Chave 1 — gsk_…" autocomplete="off" />
-          <input type="password" class="groq-key" data-provider="groq" placeholder="Chave 2 — gsk_… (opcional)" autocomplete="off" />
-          <input type="password" class="groq-key" data-provider="groq" placeholder="Chave 3 — gsk_… (opcional)" autocomplete="off" />
-        </div>
-        <div class="key-input-row" style="margin-top:5px">
-          <input type="password" id="groq-key-input" style="display:none" />
-          <button class="btn btn-secondary btn-small" onclick="testKeyFromField('groq')">Testar 1ª</button>
-          <button class="btn btn-primary btn-small" onclick="saveKeyMulti('groq')">Salvar</button>
+        <div id="groq-keys-list" class="saved-keys-list"></div>
+        <div class="key-add-row">
+          <textarea id="groq-textarea" class="key-textarea" placeholder="Cole aqui — uma chave por linha ou separadas por vírgula&#10;gsk_aaa...&#10;gsk_bbb...&#10;gsk_ccc..." rows="2" autocomplete="off" spellcheck="false"></textarea>
+          <div style="display:flex;gap:6px;margin-top:5px">
+            <button class="btn btn-secondary btn-small" onclick="testKeyFromTextarea('groq')">Testar</button>
+            <button class="btn btn-primary btn-small" onclick="saveKeyTextarea('groq')">Adicionar</button>
+          </div>
         </div>
         <div class="key-result hidden" id="groq-result"></div>
       </div>
 
-      <!-- GEMINI — até 2 chaves -->
+      <!-- GEMINI -->
       <div class="key-row" id="key-gemini">
         <div class="key-row-header">
-          <span class="key-label">Gemini</span>
-          <span class="key-badge unset" id="gemini-badge">Não configurada</span>
-          <button class="btn-clear-keys hidden" id="gemini-clear" onclick="clearProviderKeys('gemini')" title="Apagar todas as chaves Gemini">🗑 Limpar</button>
+          <span class="key-label">🔵 Gemini</span>
+          <span class="key-badge unset" id="gemini-badge">Nenhuma</span>
+          <button class="btn-clear-keys hidden" id="gemini-clear" onclick="clearProviderKeys('gemini')">🗑 Apagar tudo</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Formato: <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">AIza…</code> — até 2 chaves</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <input type="password" class="gemini-key" data-provider="gemini" placeholder="Chave 1 — AIza…" autocomplete="off" />
-          <input type="password" class="gemini-key" data-provider="gemini" placeholder="Chave 2 — AIza… (opcional)" autocomplete="off" />
-        </div>
-        <div class="key-input-row" style="margin-top:5px">
-          <input type="password" id="gemini-key-input" style="display:none" />
-          <button class="btn btn-secondary btn-small" onclick="testKeyFromField('gemini')">Testar 1ª</button>
-          <button class="btn btn-primary btn-small" onclick="saveKeyMulti('gemini')">Salvar</button>
+        <div id="gemini-keys-list" class="saved-keys-list"></div>
+        <div class="key-add-row">
+          <textarea id="gemini-textarea" class="key-textarea" placeholder="Cole aqui — AIza... (uma por linha ou vírgula)" rows="2" autocomplete="off" spellcheck="false"></textarea>
+          <div style="display:flex;gap:6px;margin-top:5px">
+            <button class="btn btn-secondary btn-small" onclick="testKeyFromTextarea('gemini')">Testar</button>
+            <button class="btn btn-primary btn-small" onclick="saveKeyTextarea('gemini')">Adicionar</button>
+          </div>
         </div>
         <div class="key-result hidden" id="gemini-result"></div>
       </div>
 
-      <!-- OPENROUTER — até 2 chaves -->
+      <!-- OPENROUTER -->
       <div class="key-row" id="key-openrouter">
         <div class="key-row-header">
-          <span class="key-label">OpenRouter</span>
-          <span class="key-badge unset" id="openrouter-badge">Não configurada</span>
-          <button class="btn-clear-keys hidden" id="openrouter-clear" onclick="clearProviderKeys('openrouter')" title="Apagar todas as chaves OpenRouter">🗑 Limpar</button>
+          <span class="key-label">🟤 OpenRouter</span>
+          <span class="key-badge unset" id="openrouter-badge">Nenhuma</span>
+          <button class="btn-clear-keys hidden" id="openrouter-clear" onclick="clearProviderKeys('openrouter')">🗑 Apagar tudo</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Formato: <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">sk-or-v1-…</code> — até 2 chaves</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <input type="password" class="openrouter-key" data-provider="openrouter" placeholder="Chave 1 — sk-or-v1-…" autocomplete="off" />
-          <input type="password" class="openrouter-key" data-provider="openrouter" placeholder="Chave 2 — sk-or-v1-… (opcional)" autocomplete="off" />
-        </div>
-        <div class="key-input-row" style="margin-top:5px">
-          <input type="password" id="openrouter-key-input" style="display:none" />
-          <button class="btn btn-secondary btn-small" onclick="testKeyFromField('openrouter')">Testar 1ª</button>
-          <button class="btn btn-primary btn-small" onclick="saveKeyMulti('openrouter')">Salvar</button>
+        <div id="openrouter-keys-list" class="saved-keys-list"></div>
+        <div class="key-add-row">
+          <textarea id="openrouter-textarea" class="key-textarea" placeholder="Cole aqui — sk-or-v1-... (uma por linha ou vírgula)" rows="2" autocomplete="off" spellcheck="false"></textarea>
+          <div style="display:flex;gap:6px;margin-top:5px">
+            <button class="btn btn-secondary btn-small" onclick="testKeyFromTextarea('openrouter')">Testar</button>
+            <button class="btn btn-primary btn-small" onclick="saveKeyTextarea('openrouter')">Adicionar</button>
+          </div>
         </div>
         <div class="key-result hidden" id="openrouter-result"></div>
       </div>
@@ -133,11 +126,11 @@
       <!-- MEM0 -->
       <div class="key-row" id="key-mem0">
         <div class="key-row-header">
-          <span class="key-label">Mem0 <span style="font-size:11px;color:var(--text3)">(opcional)</span></span>
-          <span class="key-badge unset" id="mem0-badge">Não configurada</span>
-          <button class="btn-clear-keys hidden" id="mem0-clear" onclick="clearProviderKeys('mem0')" title="Apagar chave Mem0">🗑 Limpar</button>
+          <span class="key-label">⚪ Mem0 <span style="font-size:11px;color:var(--text3)">(opcional)</span></span>
+          <span class="key-badge unset" id="mem0-badge">Nenhuma</span>
+          <button class="btn-clear-keys hidden" id="mem0-clear" onclick="clearProviderKeys('mem0')">🗑 Apagar</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Memória em nuvem — 50 memórias free. Sem chave: memória local ilimitada.</div>
+        <div id="mem0-keys-list" class="saved-keys-list"></div>
         <div class="key-input-row">
           <input type="password" id="mem0-key-input" placeholder="Token do Mem0" autocomplete="off" />
           <button class="btn btn-primary btn-small" onclick="saveMem0Key()">Salvar</button>

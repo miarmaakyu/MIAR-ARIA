@@ -126,6 +126,7 @@ ipcMain.handle('storage:delete-conversation', async (e, id) => storageHandler.de
 ipcMain.handle('storage:search-conversations', async (e, q) => storageHandler.searchConversations(q));
 ipcMain.handle('storage:get-last-conversation-id', async () => storageHandler.getLastConversationId());
 ipcMain.handle('storage:set-last-conversation-id', async (e, id) => storageHandler.setLastConversationId(id));
+ipcMain.handle('storage:append-provider-keys', async (e, { provider, keys }) => storageHandler.appendProviderKeys(provider, keys));
 ipcMain.handle('storage:delete-provider-keys', async (e, provider) => storageHandler.deleteProviderKeys(provider));
 ipcMain.handle('storage:delete-provider-key', async (e, { provider, index }) => storageHandler.deleteProviderKey(provider, index));
 

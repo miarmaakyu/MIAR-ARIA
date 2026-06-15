@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('miar', {
   searchConversations: (q) => ipcRenderer.invoke('storage:search-conversations', q),
   getLastConversationId: () => ipcRenderer.invoke('storage:get-last-conversation-id'),
   setLastConversationId: (id) => ipcRenderer.invoke('storage:set-last-conversation-id', id),
+  appendProviderKeys: (p) => ipcRenderer.invoke('storage:append-provider-keys', p),
   deleteProviderKeys: (provider) => ipcRenderer.invoke('storage:delete-provider-keys', provider),
   deleteProviderKey: (p) => ipcRenderer.invoke('storage:delete-provider-key', p),
 
