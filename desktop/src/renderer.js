@@ -372,7 +372,7 @@ async function sendMessage() {
     let loopMessages = [...apiMessages];
     let finalResult  = null;
     let loopCount    = 0;
-    const MAX_CMD_LOOPS = 8; // evita loop infinito
+    const MAX_CMD_LOOPS = 50;
 
     while (loopCount < MAX_CMD_LOOPS) {
       loopCount++;

@@ -8,7 +8,7 @@ const os   = require('os');
 const path = require('path');
 const fs   = require('fs');
 
-const CMD_TIMEOUT_MS = 30000;
+const CMD_TIMEOUT_MS = 120000; // 2 minutos para comandos longos
 
 /**
  * Executa PowerShell via spawn (correto — sem aspas erradas nos argumentos)
