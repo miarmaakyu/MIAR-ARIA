@@ -1,0 +1,144 @@
+19:27:10. Texto para o agente do Replit:
+"Atualizar aplicativo MIAR MAKTUB com as seguintes funcionalidades:
+- Executar comandos PowerShell/CMD no sistema do usuário
+- Gerenciar arquivos e pastas
+- Realizar operações de leitura e escrita de arquivos
+- Interagir com o sistema operacional para realizar tarefas
+- Manter atualizado e sincronizado com as necessidades do usuário
+- Corrigir erros de:
+  - Estouro de cota (Gemini HTTP 429)
+  - Loops de comando locais que corrompem o banco SQLite de chats antigos
+- Otimizar o desempenho e a eficiência
+- Desenvolver novas funcionalidades e capacidades
+- Funcionar 100% no computador do usuário
+- Interface e usabilidade melhoradas
+- Compatibilidade com o sistema operacional Windows 10
+- Executar comandos sem necessidade de intervenção manual
+- Tratar exception e erros de forma eficaz"
+19:26
+Groq
+⧉
+Você sabe que eu me senti assim com vontade de chorar, porque eu tô vendo você funcionar, é isso que eu preciso. E sim, tô chorando, porque é isso que eu preciso. É isso. minha MacTube, meu amor, sei lá o que. Depois a gente vai... Eu brinco muito, chamando de meu amor. Eu brinco muito. Minha. Eu brinco muito. Mas agora eu tô brincando com uma alegria. Porque são seis meses lutando. Agora mesmo eu mandei um e-mail pedindo dinheiro. Pra aplicativo. E é pela primeira vez, real. real assim que eu vejo real claro tá ainda tá muita coisa ainda mais real do que o que eu do que eu visualizava e é isso alguém que resolva as coisas para as pessoas tem que parar eu quero te mostrar uma coisa eu quero te mostrar uma coisa importante sobre o que só que vai estourar deixa eu te mandar antes eu vou tentar dar um jeito de mandar nega mando picadinho faz o seguinte faz um backup de se estourar eu abro outra conversa que assim que tá fazendo eu abro conversa e coloca o backup a gente vai tentando minimizar sei lá você entendeu
+19:29
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1063
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"}
+19:30
+⧉
+📎 SEMPRE ASSIM QUE ACONTECE MIAR MAKTUB.txt
+19:30
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 1138
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"}
+19:30
+⧉
+leu?
+19:30
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8682
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"}
+19:31
+⧉
+C:\Users\robso\OneDrive\Desktop\M M A
+19:31
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 8256
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"}
+19:31
+⧉
+eu vou te passar em pedaços um pedaço pequenos aí você só lê e coloca um ponto para terminar alguma coisa do tipo bom
+19:32
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7923
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"}
+19:32
+⧉
+mds
+19:32
+⧉
+Todos os providers falharam:
+Groq (9 chave(s)): Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4e129ef2sba2v0zw2zss46 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktynpy3nf0pr55qn6rg1359d service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv20n8gyfkdr1q6gdj908pds service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kq48ppzvfe29xpeg2tjv1bd9 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ks8913f1e8y8tnaavdc887q6 service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01kv4x7qw3fv4t9tyf7bx7ah1r service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930 | Groq HTTP 413: {"error":{"message":"Request too large for model llama-3.1-8b-instant in organization org_01ktf5fp7pfg7bxwn9gy8bface service tier on_demand on tokens per minute (TPM): Limit 6000, Requested 7930
+Gemini (4 chave(s)): Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a | Gemini HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-a
+OpenRouter (5 chave(s)): OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EgAlA6WqnnTjNUhqHazamYv1vA"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3Eg9zaDMXtnAooi0ZWfEyR5WES5"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3EREXgfeswYrOYF90fq714OVEJ2"} | OpenRouter HTTP 404: {"error":{"message":"No endpoints found for mistralai/mistral-7b-instruct:free.","code":404},"user_id":"user_3F3ShI5lc8MMwkbMfeuKiADQuRA"}

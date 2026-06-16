@@ -11,8 +11,8 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-const GROQ_PRIMARY_MODEL = 'llama-3.3-70b-versatile';
-const GROQ_FALLBACK_MODEL = 'llama-3.1-8b-instant';
+const GROQ_PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
+const GROQ_FALLBACK_MODEL = 'gemma2-9b-it'; // TPM maior que llama-3.1-8b-instant
 const MAX_CONTEXT_TOKENS = 6000;
 const CHUNK_SIZE = 3000;
 
@@ -87,7 +87,7 @@ async function callGroq(messages, key) {
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => resp.statusText);
-      if ((resp.status === 429 || resp.status === 404) && attempt === 0) {
+      if ((resp.status === 429 || resp.status === 413 || resp.status === 404) && attempt === 0) {
         model = GROQ_FALLBACK_MODEL;
         continue;
       }
@@ -176,7 +176,7 @@ async function callOpenRouter(messages, key) {
       'X-Title': 'MIAR ARIA',
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
       messages,
       max_tokens: 4096,
     }),
