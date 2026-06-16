@@ -200,6 +200,14 @@ async function tryMem0Api(action, payload, apiKey) {
 async function extractAndSaveMemories(conversationSnippet, aiProvider, apiKeys) {
   if (!conversationSnippet || !aiProvider) return [];
 
+  // Suporte tanto a chave única (string) quanto a array de chaves
+  const pickKey = (val) => Array.isArray(val) ? (val.filter(Boolean)[0] || '') : (val || '');
+  const groqKey       = pickKey(apiKeys.groq);
+  const geminiKey     = pickKey(apiKeys.gemini);
+  const openrouterKey = pickKey(apiKeys.openrouter);
+
+  if (!groqKey && !geminiKey && !openrouterKey) return [];
+
   const prompt = `Analise este trecho de conversa e extraia fatos importantes, preferências, projetos, decisões, rotinas ou informações pessoais do usuário que mereçam ser lembradas em futuras conversas.
 
 Retorne SOMENTE um JSON no formato:
@@ -214,12 +222,13 @@ ${conversationSnippet.substring(0, 2000)}`;
 
   try {
     let result = null;
-    if (apiKeys.groq) {
+
+    if (groqKey) {
       const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKeys.groq}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'gemma2-9b-it',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 600,
           temperature: 0.2,
@@ -232,8 +241,8 @@ ${conversationSnippet.substring(0, 2000)}`;
       }
     }
 
-    if (!result && apiKeys.gemini) {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKeys.gemini}`, {
+    if (!result && geminiKey) {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }),
@@ -242,6 +251,24 @@ ${conversationSnippet.substring(0, 2000)}`;
       if (resp.ok) {
         const data = await resp.json();
         result = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      }
+    }
+
+    if (!result && openrouterKey) {
+      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${openrouterKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3.2-3b-instruct:free',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 600,
+          temperature: 0.2,
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        result = data.choices?.[0]?.message?.content;
       }
     }
 
