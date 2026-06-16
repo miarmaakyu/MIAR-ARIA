@@ -103,6 +103,9 @@ async function loadSettings() {
   state.ttsRate = s.ttsRate || 1.0;
   state.ttsPitch = s.ttsPitch || 1.1;
   state.memoryEnabled = s.memoryEnabled ?? true;
+  state.customInstructions = s.customInstructions || '';
+  const ciEl = document.getElementById('custom-instructions');
+  if (ciEl) ciEl.value = state.customInstructions;
   updateTtsBtn();
 
   const rateEl = document.getElementById('tts-rate');
@@ -156,7 +159,9 @@ window.saveAllSettings = async function () {
   state.ttsVoice = voiceSel?.value || '';
   state.ttsRate = rate;
   state.ttsPitch = pitch;
-  await window.miar.saveSettings({ ttsEnabled: state.ttsEnabled, ttsVoice: state.ttsVoice, ttsRate: rate, ttsPitch: pitch, memoryEnabled: state.memoryEnabled });
+  const ciEl = document.getElementById('custom-instructions');
+  state.customInstructions = ciEl?.value || '';
+  await window.miar.saveSettings({ ttsEnabled: state.ttsEnabled, ttsVoice: state.ttsVoice, ttsRate: rate, ttsPitch: pitch, memoryEnabled: state.memoryEnabled, customInstructions: state.customInstructions });
   closeModal('settings-modal');
   updateAiStatus();
 };
@@ -373,6 +378,7 @@ async function sendMessage() {
         conversationId: state.currentConvId,
         attachments: loopCount === 1 ? allAttachments.filter(a => a.content) : [],
         memories: loopCount === 1 ? relevantMemories : [],
+        customInstructions: loopCount === 1 ? (state.customInstructions || '') : '',
       });
 
       if (!result.ok) { finalResult = result; break; }

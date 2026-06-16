@@ -82,9 +82,16 @@ function getMemories({ category, query, limit = 20 } = {}) {
   return result.slice(0, limit);
 }
 
-function searchRelevantMemories(userMessage, limit = 8) {
+function searchRelevantMemories(userMessage, limit = 10) {
   init();
-  if (!userMessage || memories.length === 0) return [];
+  if (memories.length === 0) return [];
+
+  // Sempre inclui as 3 memórias mais recentes independente de relevância
+  const byDate = [...memories].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const recent = byDate.slice(0, 3);
+
+  if (!userMessage) return recent.slice(0, limit);
+
   const words = userMessage.toLowerCase().split(/\s+/).filter(w => w.length > 3);
   const scored = memories.map(m => {
     const text = m.content.toLowerCase();
@@ -98,10 +105,19 @@ function searchRelevantMemories(userMessage, limit = 8) {
     score -= ageDays * 0.05;
     return { ...m, score };
   });
-  return scored
+
+  const relevant = scored
     .filter(m => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
+
+  // Mescla relevantes + recentes sem duplicar
+  const seen = new Set(relevant.map(m => m.id));
+  const merged = [...relevant];
+  for (const r of recent) {
+    if (!seen.has(r.id)) { merged.push(r); seen.add(r.id); }
+  }
+  return merged.slice(0, limit);
 }
 
 function updateMemory(id, { content, category }) {

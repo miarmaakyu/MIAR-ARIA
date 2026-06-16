@@ -235,7 +235,7 @@ async function callOpenRouterWithRotation(messages) {
 
 // ── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
-async function sendMessage(messages, conversationId, attachments, memories, systemInfo) {
+async function sendMessage(messages, conversationId, attachments, memories, systemInfo, customInstructions) {
   const memoryBlock = memories && memories.length > 0
     ? '\n\nMemórias relevantes do usuário:\n' + memories.map(m => `- ${m.content}`).join('\n')
     : '';
@@ -309,7 +309,7 @@ REGRAS GERAIS:
 6. Fale sempre em português do Brasil.
 7. Seja direta e técnica — o usuário é experiente.
 
-Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}`,
+Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}${customInstructions ? '\n\nINSTRUÇÕES FIXAS DO USUÁRIO (aplique sempre, em toda conversa):\n' + customInstructions : ''}`,
   };
 
   let contextMessages = [systemPrompt, ...limitContext(messages)];

@@ -103,9 +103,9 @@ ipcMain.handle('whisper:transcribe', async (_e, buffer, mimeType) => {
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 
-ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories }) => {
+ipcMain.handle('ai:send-message', async (event, { messages, conversationId, attachments, memories, customInstructions }) => {
   const sysInfo = systemHandler.getSystemInfo();
-  return await aiHandler.sendMessage(messages, conversationId, attachments, memories, sysInfo);
+  return await aiHandler.sendMessage(messages, conversationId, attachments, memories, sysInfo, customInstructions);
 });
 
 // ── SYSTEM / WINDOWS ──────────────────────────────────────────────────────────
