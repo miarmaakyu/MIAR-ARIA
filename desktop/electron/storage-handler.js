@@ -28,7 +28,17 @@ function init() {
 function readJSON(file, fallback = {}) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
 }
-function writeJSON(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
+function writeJSON(file, data) {
+  // Escrita atômica: grava em arquivo temporário e substitui — evita corrupção se o processo morrer no meio
+  const tmp = file + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch {}
+    throw e;
+  }
+}
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
 

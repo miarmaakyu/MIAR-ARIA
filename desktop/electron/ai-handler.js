@@ -155,18 +155,30 @@ async function callGemini(messages, key) {
   const body = { contents };
   if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
 
-  const resp = await fetch(`${GEMINI_BASE_URL}?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => resp.statusText);
-    throw new Error(`Gemini HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+  // Até 3 tentativas com backoff em caso de 429
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await fetch(`${GEMINI_BASE_URL}?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (resp.status === 429) {
+      if (attempt < 2) {
+        const wait = (attempt + 1) * 5000; // 5s, 10s
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      throw new Error(`Gemini HTTP 429: cota esgotada nesta chave.`);
+    }
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => resp.statusText);
+      throw new Error(`Gemini HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+    }
+    const data = await resp.json();
+    return { ok: true, text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini', model: 'gemini-2.0-flash' };
   }
-  const data = await resp.json();
-  return { ok: true, text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: 'Gemini', model: 'gemini-2.0-flash' };
+  throw new Error('Gemini: tentativas esgotadas.');
 }
 
 async function callGeminiWithRotation(messages) {
