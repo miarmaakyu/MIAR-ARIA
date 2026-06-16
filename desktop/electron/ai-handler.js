@@ -19,6 +19,30 @@ const CHUNK_SIZE = 3000;
 // Índice atual por provider para rotação
 const keyIndexes = { groq: 0, gemini: 0, openrouter: 0 };
 
+// ── USAGE STATS ───────────────────────────────────────────────────────────────
+const usageStats = { groq: 0, gemini: 0, openrouter: 0, errors: 0, total: 0 };
+
+function recordUsage(provider) {
+  usageStats.total++;
+  if (provider && usageStats[provider] !== undefined) usageStats[provider]++;
+  try {
+    const os   = require('os');
+    const path = require('path');
+    const fs   = require('fs');
+    const file = path.join(os.homedir(), 'MIAR_ARIA_usage_stats.json');
+    const pct  = (k) => usageStats.total > 0 ? ((usageStats[k] / usageStats.total) * 100).toFixed(1) + '%' : '0%';
+    const data = {
+      atualizado: new Date().toLocaleString('pt-BR'),
+      total_chamadas: usageStats.total,
+      groq:       { chamadas: usageStats.groq,       percentual: pct('groq') },
+      gemini:     { chamadas: usageStats.gemini,     percentual: pct('gemini') },
+      openrouter: { chamadas: usageStats.openrouter, percentual: pct('openrouter') },
+      erros:      { chamadas: usageStats.errors,     percentual: pct('errors') },
+    };
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  } catch {}
+}
+
 function estimateTokens(text) {
   return Math.ceil((text || '').length / 4);
 }
@@ -325,6 +349,7 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
       const result = await fn(contextMessages);
       if (result.ok && result.text) {
         storageHandler.appendLog(`[AI OK] Provider: ${result.provider} | Model: ${result.model}`);
+        recordUsage(result.provider.toLowerCase());
         return { ok: true, text: result.text, provider: result.provider, model: result.model };
       }
     } catch (err) {
@@ -334,6 +359,7 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
     }
   }
 
+  usageStats.errors++;
   return { ok: false, error: `Todos os providers falharam:\n${errors.join('\n')}` };
 }
 

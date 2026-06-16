@@ -77,8 +77,23 @@ function speak(text) {
     const v = state.voices.find(x => x.name === voiceName);
     if (v) utter.voice = v;
   }
+  const stopBtn = document.getElementById('stop-tts-btn');
+  if (stopBtn) stopBtn.style.display = 'inline-flex';
+  utter.onend = () => { if (stopBtn) stopBtn.style.display = 'none'; };
+  utter.onerror = () => { if (stopBtn) stopBtn.style.display = 'none'; };
   speechSynthesis.speak(utter);
 }
+
+window.stopSpeech = function () {
+  speechSynthesis.cancel();
+  const stopBtn = document.getElementById('stop-tts-btn');
+  if (stopBtn) stopBtn.style.display = 'none';
+};
+
+// Esc para parar a fala
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && speechSynthesis.speaking) window.stopSpeech();
+});
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 async function loadSettings() {

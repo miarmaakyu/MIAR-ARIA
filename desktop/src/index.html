@@ -25,6 +25,7 @@
       <button id="toggle-sidebar" title="Menu">☰</button>
       <span id="conv-title" title="Clique para renomear">MIAR ÁRIA</span>
       <span id="ai-status">Sem chave</span>
+      <button id="stop-tts-btn" title="Parar fala (Esc)" onclick="stopSpeech()" style="display:none">⏹</button>
       <button id="memory-btn" title="Memórias" onclick="openMemoryModal()">🧠</button>
       <button id="maintenance-btn" title="Manutenção">🔧</button>
       <button id="settings-btn" title="Configurações">⚙</button>
@@ -148,7 +149,7 @@
       </div>
       <div class="modal-row">
         <label>Velocidade</label>
-        <input type="range" id="tts-rate" min="0.5" max="2" step="0.1" value="1.0" />
+        <input type="range" id="tts-rate" min="0.5" max="3" step="0.1" value="1.0" />
         <span id="tts-rate-val" style="min-width:30px;font-size:12px;color:var(--text2)">1.0</span>
       </div>
       <div class="modal-row">
