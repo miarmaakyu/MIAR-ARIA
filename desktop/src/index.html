@@ -68,13 +68,22 @@
     <h2>⚙ Configurações</h2>
 
     <div class="modal-section">
+      <h3>Minha Conta</h3>
+      <div class="modal-row">
+        <label>E-mail</label>
+        <input type="email" id="user-email" placeholder="seu@email.com" autocomplete="off" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text1);padding:6px 10px;font-size:13px" />
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:4px">Salvo localmente. Use para lembrar qual e-mail criou cada conta de API.</p>
+    </div>
+
+    <div class="modal-section">
       <h3>Chaves de IA</h3>
       <p style="font-size:12px;color:var(--text3)">Cole uma ou várias chaves — uma por linha ou separadas por vírgula. Salvas localmente, nunca enviadas a terceiros.</p>
 
       <!-- GROQ -->
       <div class="key-row" id="key-groq">
         <div class="key-row-header">
-          <span class="key-label">🟣 Groq</span>
+          <span class="key-label">🟣 Groq <a href="https://console.groq.com/keys" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;margin-left:6px" title="Pegar/renovar chave Groq">🔗 Pegar chave</a></span>
           <span class="key-badge unset" id="groq-badge">Nenhuma</span>
           <button class="btn-clear-keys hidden" id="groq-clear" onclick="clearProviderKeys('groq')">🗑 Apagar tudo</button>
         </div>
@@ -92,7 +101,7 @@
       <!-- GEMINI -->
       <div class="key-row" id="key-gemini">
         <div class="key-row-header">
-          <span class="key-label">🔵 Gemini</span>
+          <span class="key-label">🔵 Gemini <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;margin-left:6px" title="Pegar/renovar chave Gemini">🔗 Pegar chave</a></span>
           <span class="key-badge unset" id="gemini-badge">Nenhuma</span>
           <button class="btn-clear-keys hidden" id="gemini-clear" onclick="clearProviderKeys('gemini')">🗑 Apagar tudo</button>
         </div>
@@ -110,7 +119,7 @@
       <!-- OPENROUTER -->
       <div class="key-row" id="key-openrouter">
         <div class="key-row-header">
-          <span class="key-label">🟤 OpenRouter</span>
+          <span class="key-label">🟤 OpenRouter <a href="https://openrouter.ai/settings/keys" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;margin-left:6px" title="Pegar/renovar chave OpenRouter">🔗 Pegar chave</a></span>
           <span class="key-badge unset" id="openrouter-badge">Nenhuma</span>
           <button class="btn-clear-keys hidden" id="openrouter-clear" onclick="clearProviderKeys('openrouter')">🗑 Apagar tudo</button>
         </div>

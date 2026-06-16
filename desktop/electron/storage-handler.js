@@ -47,6 +47,7 @@ function getSettings() {
     ttsPitch: s.ttsPitch || 1.1,
     memoryEnabled: s.memoryEnabled ?? true,
     customInstructions: s.customInstructions || '',
+    userEmail: s.userEmail || '',
     apiKeysSet: {},
     apiKeysCounts: {},
     apiKeysMasked: {},   // versão mascarada para exibição
@@ -134,6 +135,7 @@ function saveSettings(incoming) {
   if (incoming.ttsPitch !== undefined) updated.ttsPitch = incoming.ttsPitch;
   if (incoming.memoryEnabled !== undefined) updated.memoryEnabled = incoming.memoryEnabled;
   if (incoming.customInstructions !== undefined) updated.customInstructions = incoming.customInstructions;
+  if (incoming.userEmail !== undefined) updated.userEmail = incoming.userEmail;
 
   writeJSON(settingsFile, updated);
   appendLog('[SETTINGS] Configurações salvas.');

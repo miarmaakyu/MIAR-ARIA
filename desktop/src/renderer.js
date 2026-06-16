@@ -106,6 +106,8 @@ async function loadSettings() {
   state.customInstructions = s.customInstructions || '';
   const ciEl = document.getElementById('custom-instructions');
   if (ciEl) ciEl.value = state.customInstructions;
+  const emailEl = document.getElementById('user-email');
+  if (emailEl) emailEl.value = s.userEmail || '';
   updateTtsBtn();
 
   const rateEl = document.getElementById('tts-rate');
@@ -161,7 +163,8 @@ window.saveAllSettings = async function () {
   state.ttsPitch = pitch;
   const ciEl = document.getElementById('custom-instructions');
   state.customInstructions = ciEl?.value || '';
-  await window.miar.saveSettings({ ttsEnabled: state.ttsEnabled, ttsVoice: state.ttsVoice, ttsRate: rate, ttsPitch: pitch, memoryEnabled: state.memoryEnabled, customInstructions: state.customInstructions });
+  const userEmail = document.getElementById('user-email')?.value || '';
+  await window.miar.saveSettings({ ttsEnabled: state.ttsEnabled, ttsVoice: state.ttsVoice, ttsRate: rate, ttsPitch: pitch, memoryEnabled: state.memoryEnabled, customInstructions: state.customInstructions, userEmail });
   closeModal('settings-modal');
   updateAiStatus();
 };
