@@ -339,24 +339,70 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
     }
   }
 
-  const groqKeys = getKeys('groq');
-  const geminiKeys = getKeys('gemini');
+  const groqKeys       = getKeys('groq');
+  const geminiKeys     = getKeys('gemini');
   const openrouterKeys = getKeys('openrouter');
-  const totalKeys = groqKeys.length + geminiKeys.length + openrouterKeys.length;
+  const totalKeys      = groqKeys.length + geminiKeys.length + openrouterKeys.length;
 
   if (totalKeys === 0) {
     return { ok: false, error: 'Nenhuma chave de IA configurada.\n\nAbra ⚙ Configurações e adicione pelo menos uma chave (Groq, Gemini ou OpenRouter).' };
   }
 
-  const errors = [];
-  const providers = [
-    { name: 'Groq', hasKeys: groqKeys.length > 0, fn: callGroqWithRotation },
-    { name: 'Gemini', hasKeys: geminiKeys.length > 0, fn: callGeminiWithRotation },
-    { name: 'OpenRouter', hasKeys: openrouterKeys.length > 0, fn: callOpenRouterWithRotation },
-  ];
+  // ── ROTEAMENTO INTELIGENTE ─────────────────────────────────────────────────
+  // Detecta o tipo de tarefa e define a ordem de prioridade dos providers
+  const lastUserMsg = [...contextMessages].reverse().find(m => m.role === 'user')?.content || '';
+  const msgLen      = lastUserMsg.length;
+  const hasAttach   = attachments && attachments.length > 0;
 
-  for (const { name, hasKeys, fn } of providers) {
-    if (!hasKeys) continue;
+  // Sinais para escolha de provider
+  const isCodeTask   = /\b(código|code|script|função|class|import|def |async |powershell|python|javascript|node|npm|pip|instalar|debugar|erro de código)\b/i.test(lastUserMsg);
+  const isLongDoc    = hasAttach || msgLen > 3000;
+  const isQuickTask  = !isCodeTask && !isLongDoc && msgLen < 500;
+
+  // Monta lista de providers disponíveis na ordem ideal para a tarefa
+  const available = [];
+  if (isLongDoc) {
+    // Gemini tem contexto maior — ideal para arquivos e textos longos
+    if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'contexto longo' });
+    if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'velocidade' });
+    if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'fallback' });
+  } else if (isCodeTask || isQuickTask) {
+    // Groq é mais rápido para código e respostas curtas
+    if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'velocidade/código' });
+    if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'fallback' });
+    if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'fallback' });
+  } else {
+    // Tarefa geral — ordem padrão
+    if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'padrão' });
+    if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'padrão' });
+    if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'padrão' });
+  }
+
+  // ── SUPER CHAVE: RACING PARALELO ──────────────────────────────────────────
+  // Se houver 2+ providers disponíveis, dispara todos ao mesmo tempo.
+  // Promise.any() retorna o primeiro que responder com sucesso.
+  // Quem chegar depois é simplesmente ignorado — crédito de uma chave só.
+  if (available.length > 1) {
+    try {
+      const result = await Promise.any(
+        available.map(({ fn }) =>
+          fn(contextMessages).then(r => {
+            if (!r.ok || !r.text) throw new Error('vazio');
+            return r;
+          })
+        )
+      );
+      storageHandler.appendLog(`[AI RACING] Provider vencedor: ${result.provider} | Model: ${result.model}`);
+      recordUsage(result.provider.toLowerCase());
+      return { ok: true, text: result.text, provider: result.provider, model: result.model };
+    } catch {
+      // AggregateError — todos falharam em paralelo, tenta sequencial abaixo
+    }
+  }
+
+  // ── FALLBACK SEQUENCIAL ────────────────────────────────────────────────────
+  const errors = [];
+  for (const { name, fn } of available) {
     try {
       const result = await fn(contextMessages);
       if (result.ok && result.text) {
