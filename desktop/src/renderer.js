@@ -20,8 +20,69 @@ const state = {
   voices: [],
 };
 
+// ── TEMA DIA / NOITE / SISTEMA ────────────────────────────────────────────────
+const THEMES = ['dark', 'light', 'system'];
+const THEME_LABELS = { dark: '🌙 Noite', light: '☀️ Dia', system: '🖥️ Sistema' };
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = THEME_LABELS[theme] || '🌙 Noite';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('miar-theme') || 'dark';
+  applyTheme(saved);
+  // Reage a mudança do sistema quando no modo "system"
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((localStorage.getItem('miar-theme') || 'dark') === 'system') applyTheme('system');
+  });
+}
+
+window.cycleTheme = function () {
+  const current = localStorage.getItem('miar-theme') || 'dark';
+  const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+  localStorage.setItem('miar-theme', next);
+  applyTheme(next);
+};
+
+// ── CLOCK HH:MM:SS ────────────────────────────────────────────────────────────
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const el = document.getElementById('clock');
+    if (el) el.textContent = `${hh}:${mm}:${ss}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── API COUNTER ───────────────────────────────────────────────────────────────
+async function refreshApiCounter() {
+  if (!window.miar?.getUsageStats) return;
+  try {
+    const stats = await window.miar.getUsageStats();
+    const el = document.getElementById('api-counter');
+    if (el) {
+      el.textContent = `API: ${stats.total}`;
+      el.title = `Total: ${stats.total} chamadas\nGroq: ${stats.groq.chamadas} (${stats.groq.percentual})\nGemini: ${stats.gemini.chamadas} (${stats.gemini.percentual})\nMistral: ${stats.mistral.chamadas} (${stats.mistral.percentual})\nOpenRouter: ${stats.openrouter.chamadas} (${stats.openrouter.percentual})\nErros: ${stats.erros.chamadas}`;
+    }
+  } catch {}
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
+  startClock();
   loadVoices();
   if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
   await loadSettings();
@@ -29,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lastId = await window.miar.getLastConversationId();
   if (lastId) await openConversation(lastId);
   updateAiStatus();
+  refreshApiCounter();
   setupMic();
   setupEventListeners();
   // Mostra versão no canto superior direito
@@ -115,7 +177,7 @@ async function loadSettings() {
   if (rateEl) { rateEl.value = state.ttsRate; document.getElementById('tts-rate-val').textContent = state.ttsRate; }
   if (pitchEl) { pitchEl.value = state.ttsPitch; document.getElementById('tts-pitch-val').textContent = state.ttsPitch; }
 
-  for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
+  for (const provider of ['groq', 'gemini', 'openrouter', 'mistral', 'mem0']) {
     const badge    = document.getElementById(`${provider}-badge`);
     const clearBtn = document.getElementById(`${provider}-clear`);
     const list     = document.getElementById(`${provider}-keys-list`);
@@ -352,6 +414,8 @@ async function sendMessage() {
 
   state.isSending = true;
   document.getElementById('send-btn').disabled = true;
+  const abortBtn = document.getElementById('abort-btn');
+  if (abortBtn) abortBtn.style.display = 'inline-flex';
 
   const thinkingEl = appendMessageEl({ role: 'assistant', content: '⋯', isThinking: true, timestamp: new Date().toISOString() });
   scrollToBottom();
@@ -462,6 +526,9 @@ async function sendMessage() {
   } finally {
     state.isSending = false;
     document.getElementById('send-btn').disabled = false;
+    const abortBtnFinal = document.getElementById('abort-btn');
+    if (abortBtnFinal) abortBtnFinal.style.display = 'none';
+    refreshApiCounter();
     scrollToBottom();
   }
 }
@@ -573,11 +640,12 @@ async function updateAiStatus() {
   const el = document.getElementById('ai-status');
   try {
     const s = await window.miar.getKeyStatus();
-    const total = (s.groq?.count || 0) + (s.gemini?.count || 0) + (s.openrouter?.count || 0);
+    const total = (s.groq?.count || 0) + (s.gemini?.count || 0) + (s.openrouter?.count || 0) + (s.mistral?.count || 0);
     if (total === 0) { el.textContent = 'Sem chave'; el.className = 'ai-status error'; return; }
     const parts = [];
-    if (s.groq?.count) parts.push(`Groq×${s.groq.count}`);
-    if (s.gemini?.count) parts.push(`Gemini×${s.gemini.count}`);
+    if (s.groq?.count)       parts.push(`Groq×${s.groq.count}`);
+    if (s.gemini?.count)     parts.push(`Gemini×${s.gemini.count}`);
+    if (s.mistral?.count)    parts.push(`Mistral×${s.mistral.count}`);
     if (s.openrouter?.count) parts.push(`OR×${s.openrouter.count}`);
     el.textContent = parts.join(' · ');
     el.className = 'ai-status ok';
@@ -795,13 +863,29 @@ function setupEventListeners() {
 
   document.getElementById('send-btn').addEventListener('click', sendMessage);
 
+  const abortBtn = document.getElementById('abort-btn');
+  if (abortBtn) {
+    abortBtn.addEventListener('click', async () => {
+      await window.miar.abortRequest();
+      abortBtn.style.display = 'none';
+      state.isSending = false;
+      document.getElementById('send-btn').disabled = false;
+      const thinking = document.querySelector('.msg-thinking');
+      if (thinking) {
+        thinking.remove();
+        appendMessageEl({ role: 'assistant', content: '— Resposta cancelada pelo usuário.', isError: false, timestamp: new Date().toISOString() });
+      }
+      scrollToBottom();
+    });
+  }
+
   const msgInput = document.getElementById('message-input');
   msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
   msgInput.addEventListener('input', function () { autoResizeTextarea(this); });
 
   document.getElementById('toggle-sidebar').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('collapsed'));
   document.getElementById('settings-btn').addEventListener('click', window.openSettingsModal);
-  document.getElementById('maintenance-btn').addEventListener('click', window.openMaintenanceModal);
+  // maintenance-btn foi movido para dentro do modal de settings
   document.getElementById('attach-btn').addEventListener('click', handleAttach);
   document.getElementById('folder-btn').addEventListener('click', handleFolder);
   document.getElementById('mic-btn').addEventListener('click', toggleMic);
