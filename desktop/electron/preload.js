@@ -56,4 +56,10 @@ contextBridge.exposeInMainWorld('miar', {
 
   // Whisper — transcrição de áudio
   transcribeAudio: (buffer, mimeType) => ipcRenderer.invoke('whisper:transcribe', buffer, mimeType),
+
+  // Abortar requisição de IA em andamento
+  abortRequest: () => ipcRenderer.invoke('ai:abort'),
+
+  // Estatísticas de uso de API
+  getUsageStats: () => ipcRenderer.invoke('ai:get-usage-stats'),
 });
