@@ -1,22 +1,43 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  /* ── Paleta Medicina — azul clínico profundo ── */
-  --bg:        #06101c;
-  --bg2:       #0b1a2e;
-  --bg3:       #102540;
-  --bg4:       #163050;
-  --border:    #1c3a58;
-  --accent:    #00b8d9;
-  --accent2:   #33d6f0;
-  --text:      #dff0f8;
-  --text2:     #7ab8d0;
-  --text3:     #3d6e88;
-  --user-bg:   #0d2035;
-  --ai-bg:     #0b1a2e;
+:root,
+[data-theme="dark"] {
+  /* ── Verde Medicina — tema escuro ── */
+  --bg:        #050e09;
+  --bg2:       #091510;
+  --bg3:       #0d1e14;
+  --bg4:       #12281c;
+  --border:    #1d3e29;
+  --accent:    #27AE60;
+  --accent2:   #2ECC71;
+  --text:      #ddf5e8;
+  --text2:     #72b990;
+  --text3:     #3a7555;
+  --user-bg:   #0b1e13;
+  --ai-bg:     #091510;
   --error:     #e05555;
-  --ok:        #20c98a;
+  --ok:        #2ECC71;
   --warn:      #f0aa30;
+  --radius:    10px;
+}
+
+/* ── Verde Medicina — tema claro (Dia) ── */
+[data-theme="light"] {
+  --bg:        #f2faf5;
+  --bg2:       #ffffff;
+  --bg3:       #e3f5ea;
+  --bg4:       #cdecd8;
+  --border:    #a8d9bc;
+  --accent:    #1a8a47;
+  --accent2:   #27AE60;
+  --text:      #08200f;
+  --text2:     #235e34;
+  --text3:     #4f8a64;
+  --user-bg:   #daf0e3;
+  --ai-bg:     #f5fffb;
+  --error:     #d32f2f;
+  --ok:        #1a8a47;
+  --warn:      #b07a00;
   --radius:    10px;
 }
 
@@ -455,7 +476,7 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 /* ── UPDATE BAR ── */
 #update-bar {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 16px; background: #0a2535;
+  padding: 8px 16px; background: var(--bg3);
   border-bottom: 1px solid var(--accent);
   font-size: 13px; color: var(--accent2);
 }
@@ -470,7 +491,16 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 }
 #update-bar button:first-of-type:hover { background: var(--accent2); }
 
-/* ── Linha de vida (decoração clínica no topo) ── */
+/* ── Botão de tema (Dia / Noite / Sistema) ── */
+#theme-btn {
+  background: none; border: none; color: var(--text2);
+  cursor: pointer; font-size: 17px; padding: 4px 8px; border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+#theme-btn:hover { background: var(--bg3); color: var(--accent2); }
+
+/* ── Linha de vida (decoração no topo) ── */
 #topbar::after {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
