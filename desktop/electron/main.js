@@ -93,6 +93,27 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// ── CONTEXT MENU — copiar/colar/cortar com mouse ──────────────────────────────
+const { Menu: CtxMenu, MenuItem } = require('electron');
+app.on('web-contents-created', (_, contents) => {
+  contents.on('context-menu', (e, params) => {
+    const menu = new CtxMenu();
+    if (params.selectionText) {
+      menu.append(new MenuItem({ label: 'Copiar',      role: 'copy',      accelerator: 'CmdOrCtrl+C' }));
+      menu.append(new MenuItem({ label: 'Cortar',      role: 'cut',       accelerator: 'CmdOrCtrl+X' }));
+    }
+    menu.append(new MenuItem({ label: 'Colar',         role: 'paste',     accelerator: 'CmdOrCtrl+V' }));
+    menu.append(new MenuItem({ label: 'Selecionar tudo', role: 'selectAll', accelerator: 'CmdOrCtrl+A' }));
+    if (params.selectionText) {
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({ label: 'Copiar mensagem', click: () => {
+        contents.executeJavaScript(`navigator.clipboard.writeText(${JSON.stringify(params.selectionText)})`).catch(() => {});
+      }}));
+    }
+    menu.popup({ window: mainWindow });
+  });
+});
+
 // ── APP VERSION ───────────────────────────────────────────────────────────────
 ipcMain.handle('app:get-version', () => app.getVersion());
 
@@ -122,6 +143,15 @@ ipcMain.handle('ai:test-key', async (event, { provider, key }) => {
 
 ipcMain.handle('ai:get-key-status', async () => {
   return aiHandler.getKeyStatus();
+});
+
+ipcMain.handle('ai:abort', () => {
+  aiHandler.abortCurrentRequest();
+  return { ok: true };
+});
+
+ipcMain.handle('ai:get-usage-stats', () => {
+  return aiHandler.getUsageStats();
 });
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
