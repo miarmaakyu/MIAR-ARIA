@@ -7,6 +7,7 @@ let conversationsDir = null;
 let settingsFile = null;
 let metaFile = null;
 let logsFile = null;
+let topicsFile = null;
 
 function init() {
   userDataPath = app.getPath('userData');
@@ -14,6 +15,7 @@ function init() {
   settingsFile = path.join(userDataPath, 'settings.json');
   metaFile = path.join(userDataPath, 'meta.json');
   logsFile = path.join(userDataPath, 'miar-aria.log');
+  topicsFile = path.join(userDataPath, 'topics.json');
   if (!fs.existsSync(conversationsDir)) fs.mkdirSync(conversationsDir, { recursive: true });
   if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(settingsFile, JSON.stringify({
@@ -23,6 +25,7 @@ function init() {
     }), 'utf8');
   }
   if (!fs.existsSync(metaFile)) fs.writeFileSync(metaFile, JSON.stringify({ lastConversationId: null }), 'utf8');
+  if (!fs.existsSync(topicsFile)) fs.writeFileSync(topicsFile, JSON.stringify([]), 'utf8');
 }
 
 function readJSON(file, fallback = {}) {
@@ -63,7 +66,7 @@ function getSettings() {
     apiKeysMasked: {},   // versão mascarada para exibição
   };
   const raw = s.apiKeys || {};
-  for (const provider of ['groq', 'gemini', 'openrouter', 'mem0']) {
+  for (const provider of ['groq', 'gemini', 'openrouter', 'mistral', 'mem0']) {
     const val = raw[provider];
     if (Array.isArray(val)) {
       const valid = val.filter(Boolean);
