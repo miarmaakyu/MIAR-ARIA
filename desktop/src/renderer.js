@@ -59,8 +59,12 @@ function startClock() {
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
+    const time = `${hh}:${mm}:${ss}`;
+    const date = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     const el = document.getElementById('clock');
-    if (el) el.textContent = `${hh}:${mm}:${ss}`;
+    if (el) { el.textContent = time; el.title = date; }
+    const top = document.getElementById('topbar-clock');
+    if (top) { top.textContent = time; top.title = date; }
   }
   tick();
   setInterval(tick, 1000);
