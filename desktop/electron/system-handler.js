@@ -98,16 +98,6 @@ async function runCommand(command) {
   }
   const cmd = command.trim();
 
-  // Bloqueios mínimos de segurança
-  const BLOCKED = [
-    /format\s+[a-z]:\s*$/i,
-    /del\s+\/f\s+\/s\s+\/q\s+c:\\\s*$/i,
-    /rmdir\s+\/s\s+\/q\s+c:\\\s*$/i,
-  ];
-  for (const p of BLOCKED) {
-    if (p.test(cmd)) return { ok: false, stdout: '', stderr: 'Comando bloqueado por segurança.', exitCode: -1 };
-  }
-
   return runPowerShell(cmd);
 }
 
