@@ -67,15 +67,25 @@ function startClock() {
 }
 
 // ── API COUNTER ───────────────────────────────────────────────────────────────
+const SESSION_LIMIT = 100;
+
 async function refreshApiCounter() {
   if (!window.miar?.getUsageStats) return;
   try {
     const stats = await window.miar.getUsageStats();
+    const used = stats.total || 0;
+    const remaining = Math.max(0, SESSION_LIMIT - used);
+    const pct = Math.max(0, Math.round((remaining / SESSION_LIMIT) * 100));
+    const tip = `${remaining} chamadas restantes de ${SESSION_LIMIT}\n─────────────────\nGroq: ${stats.groq.chamadas} (${stats.groq.percentual})\nGemini: ${stats.gemini.chamadas} (${stats.gemini.percentual})\nMistral: ${stats.mistral?.chamadas ?? 0} (${stats.mistral?.percentual ?? '0%'})\nOpenRouter: ${stats.openrouter.chamadas} (${stats.openrouter.percentual})\nErros: ${stats.erros.chamadas}`;
+
+    // Cor muda conforme o % vai caindo
+    const color = pct > 50 ? 'var(--accent)' : pct > 20 ? '#e6b800' : 'var(--error, #e74c3c)';
+
+    const rem = document.getElementById('api-remaining');
+    if (rem) { rem.textContent = `${pct}%`; rem.title = tip; rem.style.color = color; }
+
     const el = document.getElementById('api-counter');
-    if (el) {
-      el.textContent = `API: ${stats.total}`;
-      el.title = `Total: ${stats.total} chamadas\nGroq: ${stats.groq.chamadas} (${stats.groq.percentual})\nGemini: ${stats.gemini.chamadas} (${stats.gemini.percentual})\nMistral: ${stats.mistral.chamadas} (${stats.mistral.percentual})\nOpenRouter: ${stats.openrouter.chamadas} (${stats.openrouter.percentual})\nErros: ${stats.erros.chamadas}`;
-    }
+    if (el) { el.textContent = `API: ${used}`; el.title = tip; }
   } catch {}
 }
 
@@ -278,6 +288,40 @@ function showKeyResult(provider, ok, msg) {
 }
 
 // ── CONVERSATION LIST ─────────────────────────────────────────────────────────
+function getConvPeriod(updatedAt) {
+  const now = new Date();
+  const d = new Date(updatedAt);
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays === 0) return 'Hoje';
+  if (diffDays === 1) return 'Ontem';
+  if (diffDays <= 7) return 'Esta semana';
+  if (diffDays <= 30) return 'Este mês';
+  const monthYear = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+}
+
+function buildConvItem(conv) {
+  const item = document.createElement('div');
+  item.className = 'conv-item' + (conv.id === state.currentConvId ? ' active' : '');
+  const date = new Date(conv.updatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  item.innerHTML = `
+    <span class="conv-item-title" title="${escHtml(conv.title)}">${escHtml(conv.title)}</span>
+    <span style="display:flex;align-items:center;gap:4px">
+      <span class="conv-item-date">${date}</span>
+      <button class="conv-del" data-id="${conv.id}" title="Apagar">✕</button>
+    </span>`;
+  item.addEventListener('click', (e) => { if (!e.target.classList.contains('conv-del')) openConversation(conv.id); });
+  item.querySelector('.conv-del').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm(`Apagar "${conv.title}"?`)) return;
+    await window.miar.deleteConversation(conv.id);
+    if (state.currentConvId === conv.id) { state.currentConvId = null; clearChat(); }
+    await loadConversationList();
+  });
+  return item;
+}
+
 async function loadConversationList() {
   const conversations = await window.miar.getConversations();
   const container = document.getElementById('conversations');
@@ -286,25 +330,24 @@ async function loadConversationList() {
     container.innerHTML = '<div style="padding:16px 12px;font-size:12px;color:var(--text3)">Nenhuma conversa ainda.</div>';
     return;
   }
+
+  // Agrupa por período
+  const groups = {};
+  const order = [];
   for (const conv of conversations) {
-    const item = document.createElement('div');
-    item.className = 'conv-item' + (conv.id === state.currentConvId ? ' active' : '');
-    const date = new Date(conv.updatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    item.innerHTML = `
-      <span class="conv-item-title" title="${escHtml(conv.title)}">${escHtml(conv.title)}</span>
-      <span style="display:flex;align-items:center;gap:4px">
-        <span class="conv-item-date">${date}</span>
-        <button class="conv-del" data-id="${conv.id}" title="Apagar">✕</button>
-      </span>`;
-    item.addEventListener('click', (e) => { if (!e.target.classList.contains('conv-del')) openConversation(conv.id); });
-    item.querySelector('.conv-del').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (!confirm(`Apagar "${conv.title}"?`)) return;
-      await window.miar.deleteConversation(conv.id);
-      if (state.currentConvId === conv.id) { state.currentConvId = null; clearChat(); }
-      await loadConversationList();
-    });
-    container.appendChild(item);
+    const period = getConvPeriod(conv.updatedAt);
+    if (!groups[period]) { groups[period] = []; order.push(period); }
+    groups[period].push(conv);
+  }
+
+  for (const period of order) {
+    const header = document.createElement('div');
+    header.className = 'conv-group-header';
+    header.innerHTML = `<span class="conv-group-label">ASSUNTOS:</span><span class="conv-group-period">${escHtml(period)}</span>`;
+    container.appendChild(header);
+    for (const conv of groups[period]) {
+      container.appendChild(buildConvItem(conv));
+    }
   }
 }
 
