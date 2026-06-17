@@ -1,7 +1,7 @@
 /**
  * MIAR ÁRIA — AI Handler
  * Suporta múltiplas chaves por provider com rotação automática.
- * Fallback: Groq → Gemini → OpenRouter
+ * Fallback: Groq → Gemini → Mistral → OpenRouter
  * Chaves salvas como array: groq: ["gsk_...", "gsk_..."]
  */
 
@@ -10,6 +10,8 @@ const storageHandler = require('./storage-handler');
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MISTRAL_API_URL    = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL      = 'mistral-large-latest';
 
 const GROQ_PRIMARY_MODEL  = 'llama-3.3-70b-versatile';
 const GROQ_FALLBACK_MODEL = 'gemma2-9b-it'; // TPM maior que llama-3.1-8b-instant
@@ -17,10 +19,40 @@ const MAX_CONTEXT_TOKENS = 6000;
 const CHUNK_SIZE = 3000;
 
 // Índice atual por provider para rotação
-const keyIndexes = { groq: 0, gemini: 0, openrouter: 0 };
+const keyIndexes = { groq: 0, gemini: 0, openrouter: 0, mistral: 0 };
+
+// ── ABORT CONTROLLER ─────────────────────────────────────────────────────────
+let _abortController = null;
+
+function abortCurrentRequest() {
+  if (_abortController) {
+    _abortController.abort('Cancelado pelo usuário.');
+    _abortController = null;
+  }
+}
+
+function getUsageStats() {
+  const pct = (k) => usageStats.total > 0 ? ((usageStats[k] / usageStats.total) * 100).toFixed(1) + '%' : '0%';
+  return {
+    total: usageStats.total,
+    groq:       { chamadas: usageStats.groq,       percentual: pct('groq') },
+    gemini:     { chamadas: usageStats.gemini,     percentual: pct('gemini') },
+    openrouter: { chamadas: usageStats.openrouter, percentual: pct('openrouter') },
+    mistral:    { chamadas: usageStats.mistral,    percentual: pct('mistral') },
+    erros:      { chamadas: usageStats.errors,     percentual: pct('errors') },
+  };
+}
+
+function makeSignal() {
+  const timeout = AbortSignal.timeout(60000);
+  if (_abortController) {
+    try { return AbortSignal.any([timeout, _abortController.signal]); } catch {}
+  }
+  return timeout;
+}
 
 // ── USAGE STATS ───────────────────────────────────────────────────────────────
-const usageStats = { groq: 0, gemini: 0, openrouter: 0, errors: 0, total: 0 };
+const usageStats = { groq: 0, gemini: 0, openrouter: 0, mistral: 0, errors: 0, total: 0 };
 
 function recordUsage(provider) {
   usageStats.total++;
@@ -37,6 +69,7 @@ function recordUsage(provider) {
       groq:       { chamadas: usageStats.groq,       percentual: pct('groq') },
       gemini:     { chamadas: usageStats.gemini,     percentual: pct('gemini') },
       openrouter: { chamadas: usageStats.openrouter, percentual: pct('openrouter') },
+      mistral:    { chamadas: usageStats.mistral,    percentual: pct('mistral') },
       erros:      { chamadas: usageStats.errors,     percentual: pct('errors') },
     };
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
@@ -107,7 +140,7 @@ async function callGroq(messages, key) {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages, max_tokens: 4096, temperature: 0.7 }),
-      signal: AbortSignal.timeout(60000),
+      signal: makeSignal(),
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => resp.statusText);
@@ -161,7 +194,7 @@ async function callGemini(messages, key) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
+      signal: makeSignal(),
     });
     if (resp.status === 429) {
       if (attempt < 2) {
@@ -216,7 +249,7 @@ async function callOpenRouter(messages, key) {
       messages,
       max_tokens: 4096,
     }),
-    signal: AbortSignal.timeout(60000),
+    signal: makeSignal(),
   });
   if (!resp.ok) {
     const errText = await resp.text().catch(() => resp.statusText);
@@ -245,9 +278,49 @@ async function callOpenRouterWithRotation(messages) {
   throw new Error(`OpenRouter (${keys.length} chave(s)): ${errors.join(' | ')}`);
 }
 
+// ── MISTRAL ───────────────────────────────────────────────────────────────────
+
+async function callMistral(messages, key) {
+  const resp = await fetch(MISTRAL_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: MISTRAL_MODEL, messages, max_tokens: 4096, temperature: 0.7 }),
+    signal: makeSignal(),
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => resp.statusText);
+    throw new Error(`Mistral HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+  }
+  const data = await resp.json();
+  return { ok: true, text: data.choices?.[0]?.message?.content || '', provider: 'Mistral', model: MISTRAL_MODEL };
+}
+
+async function callMistralWithRotation(messages) {
+  const keys = getKeys('mistral');
+  if (!keys.length) throw new Error('Nenhuma chave Mistral configurada.');
+  const startIdx = keyIndexes.mistral;
+  const errors = [];
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (startIdx + i) % keys.length;
+    try {
+      const result = await callMistral(messages, keys[idx]);
+      keyIndexes.mistral = (idx + 1) % keys.length;
+      return result;
+    } catch (e) {
+      errors.push(sanitizeError(e));
+    }
+  }
+  keyIndexes.mistral = (startIdx + 1) % keys.length;
+  throw new Error(`Mistral (${keys.length} chave(s)): ${errors.join(' | ')}`);
+}
+
 // ── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
 async function sendMessage(messages, conversationId, attachments, memories, systemInfo, customInstructions) {
+  _abortController = new AbortController();
   const memoryBlock = memories && memories.length > 0
     ? '\n\nMemórias relevantes do usuário:\n' + memories.map(m => `- ${m.content}`).join('\n')
     : '';
@@ -342,10 +415,11 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
   const groqKeys       = getKeys('groq');
   const geminiKeys     = getKeys('gemini');
   const openrouterKeys = getKeys('openrouter');
-  const totalKeys      = groqKeys.length + geminiKeys.length + openrouterKeys.length;
+  const mistralKeys    = getKeys('mistral');
+  const totalKeys      = groqKeys.length + geminiKeys.length + openrouterKeys.length + mistralKeys.length;
 
   if (totalKeys === 0) {
-    return { ok: false, error: 'Nenhuma chave de IA configurada.\n\nAbra ⚙ Configurações e adicione pelo menos uma chave (Groq, Gemini ou OpenRouter).' };
+    return { ok: false, error: 'Nenhuma chave de IA configurada.\n\nAbra ⚙ Configurações e adicione pelo menos uma chave (Groq, Gemini, Mistral ou OpenRouter).' };
   }
 
   // ── ROTEAMENTO INTELIGENTE ─────────────────────────────────────────────────
@@ -364,17 +438,20 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
   if (isLongDoc) {
     // Gemini tem contexto maior — ideal para arquivos e textos longos
     if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'contexto longo' });
+    if (mistralKeys.length)    available.push({ name: 'Mistral',    fn: callMistralWithRotation,    reason: 'contexto longo' });
     if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'velocidade' });
     if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'fallback' });
   } else if (isCodeTask || isQuickTask) {
     // Groq é mais rápido para código e respostas curtas
     if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'velocidade/código' });
+    if (mistralKeys.length)    available.push({ name: 'Mistral',    fn: callMistralWithRotation,    reason: 'código' });
     if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'fallback' });
     if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'fallback' });
   } else {
     // Tarefa geral — ordem padrão
     if (groqKeys.length)       available.push({ name: 'Groq',       fn: callGroqWithRotation,       reason: 'padrão' });
     if (geminiKeys.length)     available.push({ name: 'Gemini',     fn: callGeminiWithRotation,     reason: 'padrão' });
+    if (mistralKeys.length)    available.push({ name: 'Mistral',    fn: callMistralWithRotation,    reason: 'padrão' });
     if (openrouterKeys.length) available.push({ name: 'OpenRouter', fn: callOpenRouterWithRotation, reason: 'padrão' });
   }
 
@@ -421,6 +498,8 @@ Data/hora atual: ${new Date().toLocaleString('pt-BR')}.${sysBlock}${memoryBlock}
   return { ok: false, error: `Todos os providers falharam:\n${errors.join('\n')}` };
 }
 
+sendMessage._finalize = function() { _abortController = null; };
+
 // ── TEST KEY ─────────────────────────────────────────────────────────────────
 
 async function testKey(provider, key) {
@@ -432,6 +511,7 @@ async function testKey(provider, key) {
     if (provider === 'groq') result = await callGroq(msg, k);
     else if (provider === 'gemini') result = await callGemini(msg, k);
     else if (provider === 'openrouter') result = await callOpenRouter(msg, k);
+    else if (provider === 'mistral') result = await callMistral(msg, k);
     else return { ok: false, error: 'Provider desconhecido.' };
     return { ok: true, text: result.text, provider: result.provider, model: result.model };
   } catch (err) {
@@ -443,9 +523,10 @@ async function testKey(provider, key) {
 
 function getKeyStatus() {
   return {
-    groq: { count: getKeys('groq').length, current: keyIndexes.groq },
-    gemini: { count: getKeys('gemini').length, current: keyIndexes.gemini },
+    groq:       { count: getKeys('groq').length,       current: keyIndexes.groq },
+    gemini:     { count: getKeys('gemini').length,     current: keyIndexes.gemini },
     openrouter: { count: getKeys('openrouter').length, current: keyIndexes.openrouter },
+    mistral:    { count: getKeys('mistral').length,    current: keyIndexes.mistral },
   };
 }
 
@@ -484,4 +565,4 @@ async function transcribeWithWhisper(audioBuffer, mimeType = 'audio/webm') {
   return data.text || '';
 }
 
-module.exports = { sendMessage, testKey, getKeyStatus, transcribeWithWhisper };
+module.exports = { sendMessage, testKey, getKeyStatus, transcribeWithWhisper, abortCurrentRequest, getUsageStats };
