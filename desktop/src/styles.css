@@ -409,12 +409,16 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 #empty-state {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 12px; color: var(--text3); text-align: center; padding: 40px;
+  gap: 18px; color: var(--text3); text-align: center; padding: 40px;
 }
-#empty-state h2 {
-  font-size: 30px; color: var(--accent2); font-weight: 800;
-  letter-spacing: 3px;
-  text-shadow: 0 0 24px rgba(0,200,230,0.35);
+#empty-logo {
+  width: min(520px, 80vw);
+  max-height: 260px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.92;
+  filter: drop-shadow(0 4px 32px rgba(39,174,96,0.18));
 }
 #empty-state p   { font-size: 14px; max-width: 360px; }
 .empty-hint {
